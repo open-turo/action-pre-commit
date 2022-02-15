@@ -1,0 +1,8 @@
+name: "pre-commit"
+description: "Run pre-commit in the current directory"
+runs:
+  using: "composite"
+  steps:
+    - name: pre-commit
+      shell: bash
+      run: pre-commit run --show-diff-on-failure --color=always --all-files
