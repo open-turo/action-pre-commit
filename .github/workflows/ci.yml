@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v2
       - uses: actions/setup-python@v2
-      - uses: pre-commit/action@v2.0.0
+      - uses: pre-commit/action@v2.0.3
 
   # test action works running from the graph
   action:
@@ -27,5 +27,5 @@ jobs:
         with:
           fetch-depth: 0
       - uses: actions/setup-python@v2
-      - uses: pre-commit/action@v2.0.0
+      - uses: pre-commit/action@v2.0.3
       - uses: ./
