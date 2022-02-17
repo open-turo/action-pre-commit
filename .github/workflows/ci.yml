@@ -14,7 +14,8 @@ jobs:
       - uses: actions/checkout@v2
         with:
           fetch-depth: 0
-      - uses: wagoid/commitlint-github-action@v4.1.9
+      - if: (github.actor!= 'dependabot[bot]') && (contains(github.head_ref, 'dependabot/github_actions/') == false)
+        uses: wagoid/commitlint-github-action@v4
       - uses: actions/setup-python@v2
       - uses: pre-commit/action@v2.0.3
 
