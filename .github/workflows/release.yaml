@@ -1,10 +1,8 @@
-name: "Test"
+name: Release
+
 on:
-  pull_request:
   push:
-    branches:
-      - main
-      - "releases/*"
+    branches: [main]
 
 jobs:
   lint:
@@ -12,8 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: open-turo/actions-gha/lint@v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-  # test action works running from the graph
   action:
     name: Action test
     runs-on: ubuntu-latest
@@ -24,3 +23,14 @@ jobs:
       - uses: actions/setup-python@v2
       - uses: pre-commit/action@v2.0.3
       - uses: ./
+
+  release:
+    needs:
+      - lint
+      - test
+    name: Release
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: open-turo/actions-gha/release@v1
