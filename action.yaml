@@ -1,10 +1,17 @@
 name: "pre-commit"
 description: "Run pre-commit in the current directory"
+inputs:
+  config-file:
+    required: false
+    description: "The config file to present to commitlint-github-action"
+    default: .commitlintrc.yaml
 runs:
   using: "composite"
   steps:
-    - if: hashFiles('.commitlintrc.yaml') != '' && (github.actor!= 'dependabot[bot]') && (contains(github.head_ref, 'dependabot/github_actions/') == false)
+    - if: hashFiles(inputs.config-file) != '' && (github.actor!= 'dependabot[bot]') && (contains(github.head_ref, 'dependabot/github_actions/') == false)
       uses: wagoid/commitlint-github-action@v4
+      with:
+        configFile: ${{ inputs.config-file }}
     - name: pre-commit
       shell: bash
       run: pre-commit run --show-diff-on-failure --color=always --all-files
