@@ -17,12 +17,12 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: actions/setup-python@v3
-      - uses: pre-commit/action@v2.0.3
-      - uses: ./
+      - name: Pre-commit
+        uses: ./
 
   release:
     needs:
