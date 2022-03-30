@@ -15,15 +15,21 @@ runs:
       shell: bash
       run: |
         # Install dependencies
+
+        # This will set an environment variable we can use to conditionally
+        # install pre-commit if needed and toggle how the action runs.
+        echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
+
+        # Verify that the npm command exists prior to running it, and if it
+        # does not exist, simply exit this step.
+        command -v npm > /dev/null || echo "Skipping npm install" && exit 0
+
         # This will install our commitlint configuration into a path we
         # can feed to the commitlint-github-action
         mkdir -p "$RUNNER_TEMP/_github_home"
         cd "$RUNNER_TEMP/_github_home" || cd "$GITHUB_WORKSPACE"
         npm install --no-save "@open-turo/commitlint-config-conventional" 2>/dev/null
         cd - &>/dev/null
-        # This will set an environment variable we can check to install
-        # Pre-commit if needed and toggle how the action runs
-        echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
     - name: Commitlint
       if: hashFiles(inputs.config-file) != '' && (github.actor!= 'dependabot[bot]') && (contains(github.head_ref, 'dependabot/github_actions/') == false)
       uses: wagoid/commitlint-github-action@v4
