@@ -2,36 +2,51 @@ name: Pre-commit
 description: Run pre-commit in the current directory
 inputs:
   config-file:
-    required: false
+    required: true
     description: The config file to present to commitlint-github-action
     default: .commitlintrc.yaml
-  # TODO: Determine if we want to allow an input to install dependencies,
-  # such as commitlint configuration packages
+  no-commitlint:
+    required: true
+    description: Set this to "true" to skip running commitlint
+    default: false
+  turo-conventional-commit:
+    required: true
+    description: Set this to "false" to customize conventional commit configuration
+    default: true
+
 runs:
   using: composite
   steps:
-    # We want to just install our commitlint into the NODE_PATH below
-    - name: Install dependencies
+    - name: Find pre-commit
       shell: bash
       run: |
-        # Install dependencies
-
+        # Finding pre-commit
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
-
+    - name: Install Turo conventional commit configuration
+      if: inputs.no-commitlint != true
+      shell: bash
+      run: |
+        # Install Turo conventional commit configuration
         # Verify that the npm command exists prior to running it, and if it
-        # does not exist, simply exit this step.
+        # does not exist, simply exit this step. This might cause later steps
+        # to fail but that's their problem.
         command -v npm > /dev/null || { echo "Skipping npm install" && exit 0; }
-
         # This will install our commitlint configuration into a path we
         # can feed to the commitlint-github-action
         mkdir -p "$RUNNER_TEMP/_github_home"
         cd "$RUNNER_TEMP/_github_home" || cd "$GITHUB_WORKSPACE"
         npm install --no-save "@open-turo/commitlint-config-conventional" 2>/dev/null
         cd - &>/dev/null
+    - name: Check commitlint config
+      if: inputs.turo-conventional-commit
+      shell: bash
+      run: |
+        # Write default commitlint config
+        echo "extends: [\"@open-turo/commitlint-config-conventional\"]" > "${{ inputs.config-file }}"
     - name: Commitlint
-      if: hashFiles(inputs.config-file) != '' && (github.actor!= 'dependabot[bot]') && (contains(github.head_ref, 'dependabot/github_actions/') == false)
+      if: inputs.no-commitlint != true
       uses: wagoid/commitlint-github-action@v4
       with:
         configFile: ${{ inputs.config-file }}
