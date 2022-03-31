@@ -22,7 +22,7 @@ runs:
 
         # Verify that the npm command exists prior to running it, and if it
         # does not exist, simply exit this step.
-        command -v npm > /dev/null || echo "Skipping npm install" && exit 0
+        command -v npm > /dev/null || { echo "Skipping npm install" && exit 0; }
 
         # This will install our commitlint configuration into a path we
         # can feed to the commitlint-github-action
