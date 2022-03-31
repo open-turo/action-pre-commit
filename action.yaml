@@ -5,10 +5,6 @@ inputs:
     required: true
     description: The config file to present to commitlint-github-action
     default: .commitlintrc.yaml
-  no-commitlint:
-    required: true
-    description: Set this to "true" to skip running commitlint
-    default: false
   turo-conventional-commit:
     required: true
     description: Set this to "false" to customize conventional commit configuration
@@ -25,7 +21,7 @@ runs:
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
     - name: Install Turo conventional commit configuration
-      if: inputs.no-commitlint != true
+      if: hashFiles(inputs.config-file) != ''
       shell: bash
       run: |
         # Install Turo conventional commit configuration
@@ -40,13 +36,13 @@ runs:
         npm install --no-save "@open-turo/commitlint-config-conventional" 2>/dev/null
         cd - &>/dev/null
     - name: Check commitlint config
-      if: inputs.turo-conventional-commit
+      if: hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
       shell: bash
       run: |
         # Write default commitlint config
         echo "extends: [\"@open-turo/commitlint-config-conventional\"]" > "${{ inputs.config-file }}"
     - name: Commitlint
-      if: inputs.no-commitlint != true
+      if: hashFiles(inputs.config-file) != ''
       uses: wagoid/commitlint-github-action@v4
       with:
         configFile: ${{ inputs.config-file }}
