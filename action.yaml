@@ -49,6 +49,10 @@ runs:
       env:
         # This /github/home is the internal Docker mount of $RUNNER_TEMP/_github_home
         NODE_PATH: /github/home/node_modules
+    - name: Clear commitlint config changes
+      shell: bash
+      run: |
+        git checkout "${{ inputs.config-file }}"
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PRE_COMMIT_BIN == null
