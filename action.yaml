@@ -50,6 +50,7 @@ runs:
         # This /github/home is the internal Docker mount of $RUNNER_TEMP/_github_home
         NODE_PATH: /github/home/node_modules
     - name: Clear commitlint config changes
+      if: hashFiles(inputs.config-file) != ''
       shell: bash
       run: |
         git checkout "${{ inputs.config-file }}"
