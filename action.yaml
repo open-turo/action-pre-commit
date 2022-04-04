@@ -8,7 +8,7 @@ inputs:
   turo-conventional-commit:
     required: true
     description: Set this to "false" to customize conventional commit configuration
-    default: true
+    default: "true"
 
 runs:
   using: composite
@@ -36,7 +36,7 @@ runs:
         npm install --no-save "@open-turo/commitlint-config-conventional" 2>/dev/null
         cd - &>/dev/null
     - name: Check commitlint config
-      if: hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
+      if: hashFiles(inputs.config-file) == '' && inputs.turo-conventional-commit
       shell: bash
       run: |
         # Write default commitlint config
