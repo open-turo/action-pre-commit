@@ -8,7 +8,7 @@ inputs:
   turo-conventional-commit:
     required: true
     description: Set this to "false" to customize conventional commit configuration
-    default: true
+    default: "true"
 
 runs:
   using: composite
@@ -20,6 +20,10 @@ runs:
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
+        # Create a marker if we want to restore the commitlint configuration
+        if [[ -f "${{ inputs.config-file }}" ]]; then
+          echo "RESTORE_CONFIG_FILE=1" >> $GITHUB_ENV
+        fi
     - name: Install Turo conventional commit configuration
       if: hashFiles(inputs.config-file) != ''
       shell: bash
@@ -50,9 +54,9 @@ runs:
         # This /github/home is the internal Docker mount of $RUNNER_TEMP/_github_home
         NODE_PATH: /github/home/node_modules
     - name: Clear commitlint config changes
+      if: env.RESTORE_CONFIG_FILE
       shell: bash
-      run: |
-        git checkout "${{ inputs.config-file }}"
+      run: git checkout -- "${{ inputs.config-file }}" || true
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PRE_COMMIT_BIN == null
