@@ -13,6 +13,12 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Enable commit lint
+      id: enable-commit-lint
+      if: hashFiles(inputs.config-file) != ''
+      shell: bash
+      run: |
+        echo '::set-output name=commit-lint-enabled::"true"'
     - name: Find pre-commit
       shell: bash
       run: |
@@ -21,11 +27,8 @@ runs:
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
         # Create a marker if we want to restore the commitlint configuration
-        if [[ -f "${{ inputs.config-file }}" ]]; then
-          echo "RESTORE_CONFIG_FILE=1" >> $GITHUB_ENV
-        fi
     - name: Install Turo conventional commit configuration
-      if: hashFiles(inputs.config-file) != ''
+      if: steps.enable-commit-lint.outputs.enabled == "true"
       shell: bash
       run: |
         # Install Turo conventional commit configuration
@@ -40,13 +43,15 @@ runs:
         npm install --no-save "@open-turo/commitlint-config-conventional" 2>/dev/null
         cd - &>/dev/null
     - name: Check commitlint config
-      if: hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
+      id: turo-commitlint-config
+      if: steps.enable-commit-lint.outputs.commit-lint-enabled == "true" && inputs.turo-conventional-commit == "true"
       shell: bash
       run: |
         # Write default commitlint config
         echo "extends: [\"@open-turo/commitlint-config-conventional\"]" > "${{ inputs.config-file }}"
+        echo '::set-output name=turo-commitlint-config-written::"true"'
     - name: Commitlint
-      if: hashFiles(inputs.config-file) != ''
+      if: steps.enable-commit-lint.outputs.commit-lint-enabled == "true"
       uses: wagoid/commitlint-github-action@v4
       with:
         configFile: ${{ inputs.config-file }}
@@ -54,7 +59,7 @@ runs:
         # This /github/home is the internal Docker mount of $RUNNER_TEMP/_github_home
         NODE_PATH: /github/home/node_modules
     - name: Clear commitlint config changes
-      if: env.RESTORE_CONFIG_FILE
+      if: steps.turo-commitlint-config.outputs.turo-commitlint-config-written
       shell: bash
       run: git checkout -- "${{ inputs.config-file }}" || true
     - name: Setup python
