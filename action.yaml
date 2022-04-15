@@ -13,6 +13,18 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Configure setup steps
+      shell: bash
+      run: |
+        # If npm is not present, but .node-version is present, setup tools
+        command -v npm > /dev/null && exit 0
+        echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
+        if [[ ! -f ".node-version" ]]; then
+          echo '16.13.2' > .node-version
+        fi
+    - name: Conditionally install npm
+      if: env.NEED_TO_SETUP_TOOLS
+      uses: open-turo/action-setup-tools@v1
     - name: Find pre-commit
       shell: bash
       run: |
@@ -29,10 +41,6 @@ runs:
       shell: bash
       run: |
         # Install Turo conventional commit configuration
-        # Verify that the npm command exists prior to running it, and if it
-        # does not exist, simply exit this step. This might cause later steps
-        # to fail but that's their problem.
-        command -v npm > /dev/null || { echo "Skipping npm install" && exit 0; }
         # This will install our commitlint configuration into a path we
         # can feed to the commitlint-github-action
         mkdir -p "$RUNNER_TEMP/_github_home"
