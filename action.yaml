@@ -1,5 +1,5 @@
 name: Pre-commit
-description: Run pre-commit in the current directory
+description: GitHub Action for running pre-commit hooks against the repository. Conditionally installs tools needed for the Action to be able to perform its duties such as `npm`, `pre-commit`, etc.
 inputs:
   config-file:
     required: true
