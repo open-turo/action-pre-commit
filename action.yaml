@@ -25,7 +25,7 @@ runs:
         command -v npm > /dev/null && exit 0
         echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
         if [[ ! -f ".node-version" ]]; then
-          echo '16.13.2' > .node-version
+          echo '16.14.2' > .node-version
         fi
     - name: Conditionally install npm
       if: env.NEED_TO_SETUP_TOOLS
