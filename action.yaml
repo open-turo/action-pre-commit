@@ -96,7 +96,7 @@ runs:
     - name: Pre-commit
       # Same as above, this will install and run pre-commit for us
       if: env.PRE_COMMIT_BIN == null
-      uses: pre-commit/action@v2.0.3
+      uses: pre-commit/action@v3.0.0
       with:
         extra_args: ${{ env.PRE_COMMIT_FILES }}
     - name: Pre-commit
