@@ -92,7 +92,7 @@ runs:
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PRE_COMMIT_BIN == null
-      uses: actions/setup-python@v3
+      uses: actions/setup-python@v4
     - name: Pre-commit
       # Same as above, this will install and run pre-commit for us
       if: env.PRE_COMMIT_BIN == null
