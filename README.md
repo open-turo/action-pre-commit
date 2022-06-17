@@ -2,6 +2,8 @@
 
 GitHub Action for running pre-commit hooks against the consumer repository. Conditionally installs tools needed for the Action to be able to perform its duties such as `npm`, `pre-commit`, etc.
 
+This will also check out the repository with `fetch-depth: 0` if it isn't already present in the workspace.
+
 ## Usage
 
 ```yaml
