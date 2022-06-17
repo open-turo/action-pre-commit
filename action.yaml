@@ -18,18 +18,22 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Configure setup steps
+    - name: Configure required tools
       shell: bash
       run: |
-        # If npm is not present, but .node-version is present, setup tools
-        command -v npm > /dev/null && exit 0
-        echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
-        if [[ ! -f ".node-version" ]]; then
-          echo '16.14.2' > .node-version
+        # Check if we already have an npm to use
+        if ! command -v npm > /dev/null; then
+          echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
+          if [[ ! -f ".node-version" ]]; then
+            echo '16.14.2' > .node-version
+          fi
         fi
-    - name: Conditionally install npm
-      if: env.NEED_TO_SETUP_TOOLS
-      uses: open-turo/action-setup-tools@v1
+        if ! command -v python3 > /dev/null; then
+          echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
+          if [[ ! -f ".python-version" ]]; then
+            echo '3.10.2' > .python-version
+          fi
+        fi         
     - name: Find pre-commit
       shell: bash
       run: |
@@ -41,6 +45,13 @@ runs:
         if [[ -f "${{ inputs.config-file }}" ]]; then
           echo "RESTORE_CONFIG_FILE=1" >> $GITHUB_ENV
         fi
+    - name: Setup python
+      # Only run this if we don't already have a pre-commit on the PATH
+      if: env.PRE_COMMIT_BIN == null
+      uses: actions/setup-python@v4
+    - name: Conditionally install tools
+      if: env.NEED_TO_SETUP_TOOLS
+      uses: open-turo/action-setup-tools@v1
     - name: Install Turo conventional commit configuration
       if: hashFiles(inputs.config-file) != ''
       shell: bash
@@ -89,10 +100,6 @@ runs:
       if: inputs.only-changed != 'true'
       shell: bash
       run: echo PRE_COMMIT_FILES="--all-files" >> $GITHUB_ENV
-    - name: Setup python
-      # Only run this if we don't already have a pre-commit on the PATH
-      if: env.PRE_COMMIT_BIN == null
-      uses: actions/setup-python@v4
     - name: Pre-commit
       # Same as above, this will install and run pre-commit for us
       if: env.PRE_COMMIT_BIN == null
