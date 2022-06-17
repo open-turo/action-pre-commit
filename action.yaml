@@ -60,7 +60,7 @@ runs:
         echo "extends: [\"@open-turo/commitlint-config-conventional\"]" > "${{ inputs.config-file }}"
     - name: Commitlint
       if: hashFiles(inputs.config-file) != ''
-      uses: wagoid/commitlint-github-action@v4
+      uses: wagoid/commitlint-github-action@v5
       with:
         configFile: ${{ inputs.config-file }}
       env:
