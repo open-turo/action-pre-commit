@@ -28,11 +28,9 @@ runs:
             echo '16.14.2' > .node-version
           fi
         fi
-        if ! command -v python3 > /dev/null; then
+        if [[ ! -f ".python-version" ]]; then
           echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
-          if [[ ! -f ".python-version" ]]; then
-            echo '3.10.2' > .python-version
-          fi
+          echo '3.10.2' > .python-version
         fi
     - name: Find pre-commit
       shell: bash
