@@ -33,7 +33,7 @@ runs:
           if [[ ! -f ".python-version" ]]; then
             echo '3.10.2' > .python-version
           fi
-        fi         
+        fi
     - name: Find pre-commit
       shell: bash
       run: |
