@@ -47,6 +47,8 @@ runs:
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PRE_COMMIT_BIN == null
       uses: actions/setup-python@v4
+      with:
+        python-version: 3.10.2
     - name: Conditionally install tools
       if: env.NEED_TO_SETUP_TOOLS
       uses: open-turo/action-setup-tools@v1
