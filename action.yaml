@@ -18,20 +18,14 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Configure required tools
+    - name: Set node.js version
+      if: hashFiles('.node-version') == ''
       shell: bash
-      run: |
-        # Check if we already have an npm to use
-        if ! command -v npm > /dev/null; then
-          echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
-          if [[ ! -f ".node-version" ]]; then
-            echo '16.14.2' > .node-version
-          fi
-        fi
-        if [[ ! -f ".python-version" ]]; then
-          echo "NEED_TO_SETUP_TOOLS=1" >> $GITHUB_ENV
-          echo '3.10.2' > .python-version
-        fi
+      run: echo '16.14.2' > .node-version
+    - name: Set Python version
+      if: hashFiles('.python-version') == ''
+      shell: bash
+      run: echo '3.10.2' > .python-version
     - name: Find pre-commit
       shell: bash
       run: |
@@ -39,48 +33,17 @@ runs:
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
-        # Create a marker if we want to restore the commitlint configuration
-        if [[ -f "${{ inputs.config-file }}" ]]; then
-          echo "RESTORE_CONFIG_FILE=1" >> $GITHUB_ENV
-        fi
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PRE_COMMIT_BIN == null
       uses: actions/setup-python@v4
       with:
         python-version: 3.10.2
-    - name: Conditionally install tools
-      if: env.NEED_TO_SETUP_TOOLS
+    - name: Install tools
+      # This will skip the (slow) pyenv install if we triggered the above
       uses: open-turo/action-setup-tools@v1
-    - name: Install Turo conventional commit configuration
-      if: hashFiles(inputs.config-file) != ''
-      shell: bash
-      run: |
-        # Install Turo conventional commit configuration
-        # This will install our commitlint configuration into a path we
-        # can feed to the commitlint-github-action
-        mkdir -p "$RUNNER_TEMP/_github_home"
-        cd "$RUNNER_TEMP/_github_home" || cd "$GITHUB_WORKSPACE"
-        npm install --no-save "@open-turo/commitlint-config-conventional" 2>/dev/null
-        cd - &>/dev/null
-    - name: Check commitlint config
-      if: hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
-      shell: bash
-      run: |
-        # Write default commitlint config
-        echo "extends: [\"@open-turo/commitlint-config-conventional\"]" > "${{ inputs.config-file }}"
     - name: Commitlint
-      if: hashFiles(inputs.config-file) != ''
-      uses: wagoid/commitlint-github-action@v5
-      with:
-        configFile: ${{ inputs.config-file }}
-      env:
-        # This /github/home is the internal Docker mount of $RUNNER_TEMP/_github_home
-        NODE_PATH: /github/home/node_modules
-    - name: Clear commitlint config changes
-      if: env.RESTORE_CONFIG_FILE
-      shell: bash
-      run: git checkout -- "${{ inputs.config-file }}" || true
+      uses: ./commitlint
     # Collect file changes
     - name: Find changed files
       if: inputs.only-changed
