@@ -61,7 +61,7 @@ runs:
         echo "$RUNNER_TEMP/node_modules/.bin" >> $GITHUB_PATH
         echo "NODE_PATH=$RUNNER_TEMP/node_modules" >> $GITHUB_ENV
     - name: Use default conventional commit config
-      if: inputs.turo-conventional-commit
+      if: inputs.turo-conventional-commit == 'true'
       shell: bash
       run: |
         # Write default commitlint config in the workspace.
@@ -126,19 +126,19 @@ runs:
           --from "$FROM" \
           --to HEAD
     - name: Restore commitlint config
-      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
+      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
       shell: bash
       run: git checkout -- "${{ inputs.config-file }}" || true
     # Collect file changes
     - name: Find changed files
-      if: inputs.only-changed
+      if: inputs.only-changed == 'true'
       uses: trilom/file-changes-action@v1.2.4
       id: file_changes
       with:
         output: " "
     # Export changed file names for use in pre-commit action
     - name: Limit pre-commit to changed files
-      if: inputs.only-changed
+      if: inputs.only-changed == 'true'
       shell: bash
       run: |
         PRE_COMMIT_FILES="--files ${{ steps.file_changes.outputs.files}}"
