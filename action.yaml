@@ -64,7 +64,7 @@ runs:
           "@open-turo/commitlint-config-conventional" \
           "@commitlint/cli"
     - name: Commitlint
-      if: hashFiles(inputs.config-file) != ''
+      if: hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
       shell: bash
       run: |
         # Commitlint
