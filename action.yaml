@@ -25,7 +25,11 @@ runs:
     - name: Set Python version
       if: hashFiles('.python-version') == ''
       shell: bash
-      run: echo '3.10.2' > .python-version
+      run: |
+        # Use the .python-version from the action repo as the default version
+        PYTHON_VERSION="$(cat "$GITHUB_ACTION_PATH/.python-version")"
+        echo "$PYTHON_VERSION" > .python-version
+        echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
     - name: Find pre-commit
       shell: bash
       run: |
@@ -37,8 +41,8 @@ runs:
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PRE_COMMIT_BIN == null
       uses: actions/setup-python@v4
-      with:
-        python-version: 3.10.2
+      # with:
+      #   python-version: 3.10.2
     - name: Install tools
       # This will skip the (slow) pyenv install if we triggered the above
       uses: open-turo/action-setup-tools@v1
