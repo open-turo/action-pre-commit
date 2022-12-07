@@ -37,9 +37,16 @@ runs:
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
+    - name: Find python
+      shell: bash
+      run: |
+        # Finding python
+        # This will set an environment variable we can use to conditionally
+        # install python.
+        echo "PYTHON_BIN=$(command -v python)" >> $GITHUB_ENV
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
-      if: env.PRE_COMMIT_BIN == null
+      if: env.PYTHON_BIN == null
       uses: actions/setup-python@v4
       # with:
       #   python-version: 3.10.2
