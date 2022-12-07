@@ -13,6 +13,8 @@ GitHub Action for running pre-commit hooks against the consumer repository. Cond
 
 ## Usage
 
+Basic usage with default options:
+
 ```yaml
 jobs:
   lint:
@@ -21,6 +23,25 @@ jobs:
         with:
           fetch-depth: 0
       - uses: open-turo/action-pre-commit@v1
+```
+
+Overriding defaults:
+
+```yaml
+jobs:
+  lint:
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: open-turo/action-pre-commit@v1
+        with:
+          # Override the config file used by default
+          config-file: .commitlintrc.yaml
+          # Don't include `@turo/conventional-commit` configuration
+          turo-conventional-commit: false
+          # Only run pre-commit against changed files, instead of all files
+          only-changed: true
 ```
 
 ## Inputs
