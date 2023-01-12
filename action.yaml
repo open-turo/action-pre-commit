@@ -21,13 +21,21 @@ runs:
     - name: Set node.js version
       if: hashFiles('.node-version') == ''
       shell: bash
-      run: echo '16.14.2' > .node-version
+      run: |
+        # Get the existing node version, if the command exists
+        desired_version="$(node --version || true)"
+        # Chain defaults to get a good value
+        desired_version="${desired_version:-${NODENV_VERSION:-${NODE_VERSION:-16.14.2}}}"
+        # Strip the leading "v" in e.g. "v16.0.0", since .node-version will not work with it
+        desired_version="${desired_version#v}"
+        # Set the version so action-setup-tools can use it later
+        echo "$desired_version" > .node-version
     - name: Set Python version
       if: hashFiles('.python-version') == ''
       shell: bash
       run: |
         # Use the .python-version from the action repo as the default version
-        PYTHON_VERSION="$(cat "$GITHUB_ACTION_PATH/.python-version")"
+        PYTHON_VERSION="${PYTHON_VERSION:-$(cat "$GITHUB_ACTION_PATH/.python-version")}"
         echo "$PYTHON_VERSION" > .python-version
         echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
     - name: Find pre-commit
