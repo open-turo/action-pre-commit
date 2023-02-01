@@ -51,7 +51,7 @@ runs:
         # Finding python
         # This will set an environment variable we can use to conditionally
         # install python.
-        echo "PYTHON_BIN=$(command -v python)" >> $GITHUB_ENV
+        echo "PYTHON_BIN=$(command -v python3)" >> $GITHUB_ENV
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PYTHON_BIN == null
