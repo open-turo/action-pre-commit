@@ -32,12 +32,15 @@ runs:
         echo "$desired_version" > .node-version
     - name: Set Python version
       if: hashFiles('.python-version') == ''
+      id: create-python-version-file
       shell: bash
       run: |
         # Use the .python-version from the action repo as the default version
         PYTHON_VERSION="${PYTHON_VERSION:-$(cat "$GITHUB_ACTION_PATH/.python-version")}"
         echo "$PYTHON_VERSION" > .python-version
         echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
+        # Store as output that the file was created so we can clean up afterwards
+        echo "file-created=true" >> "$GITHUB_OUTPUT"
     - name: Find pre-commit
       shell: bash
       run: |
@@ -167,3 +170,8 @@ runs:
       if: env.PRE_COMMIT_BIN != null
       shell: bash
       run: pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_FILES }}
+    - name: Clean up
+      # Delete the python version file if we created it
+      if: steps.create-python-version-file.outputs.file-created == 'true'
+      shell: bash
+      run: rm .python-version
