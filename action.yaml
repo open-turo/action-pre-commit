@@ -25,7 +25,7 @@ runs:
         # Get the existing node version, if the command exists
         desired_version="$(node --version || true)"
         # Chain defaults to get a good value
-        desired_version="${desired_version:-${NODENV_VERSION:-${NODE_VERSION:-16.14.2}}}"
+        desired_version="${desired_version:-${NODENV_VERSION:-${NODE_VERSION:-16.19.1}}}"
         # Strip the leading "v" in e.g. "v16.0.0", since .node-version will not work with it
         desired_version="${desired_version#v}"
         # Set the version so action-setup-tools can use it later
