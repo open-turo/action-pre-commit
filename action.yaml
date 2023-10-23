@@ -54,6 +54,10 @@ runs:
         # Finding poetry
         # This will set an environment variable we can use to conditionally
         # install poetry.
+        # if poetry is installed we want to make sure it uses the right python
+        # version in case there are multiple python versions. This is
+        # particularly important for repositories that do not use the same
+        # python version as the default python version installed on the runners.
         echo "POETRY_BIN=$(command -v poetry)" >> $GITHUB_ENV
     - name: Find python
       shell: bash
