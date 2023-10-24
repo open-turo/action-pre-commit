@@ -14,6 +14,12 @@ inputs:
     description: >-
       Set this to "true" to only run pre-commit against changed files, and not
       the entire repository
+  align-poetry-version:
+    required: false
+    description: >-
+      Set this to "true" to align the poetry python version to the python
+      version used by pre-commit
+    default: "false"
 
 runs:
   using: composite
@@ -179,7 +185,7 @@ runs:
       with:
         extra_args: ${{ env.PRE_COMMIT_FILES }}
     - name: Set poetry env to match python version
-      if: env.POETRY_BIN != null
+      if: (env.POETRY_BIN != null) && (inputs.align-poetry-version == 'true')
       shell: bash
       run: |
         poetry env use ${{ env.PYTHON_VERSION_SET }}
