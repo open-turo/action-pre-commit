@@ -48,13 +48,6 @@ runs:
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
-    - name: Find poetry
-      shell: bash
-      run: |
-        # Finding poetry
-        # This will set an environment variable we can use to conditionally
-        # install poetry.
-        echo "POETRY_BIN=$(command -v poetry)" >> $GITHUB_ENV
     - name: Find python
       shell: bash
       run: |
@@ -62,8 +55,6 @@ runs:
         # This will set an environment variable we can use to conditionally
         # install python.
         echo "PYTHON_BIN=$(command -v python)" >> $GITHUB_ENV
-        echo "PYTHON_VERSION_SET=$(pyenv version-name)" >> $GITHUB_ENV
-        #add as debug the python versions and
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PYTHON_BIN == null
@@ -174,17 +165,11 @@ runs:
       uses: pre-commit/action@v3.0.0
       with:
         extra_args: ${{ env.PRE_COMMIT_FILES }}
-    - name: Set poetry env to match python version
-      if: env.POETRY_BIN != null
-      shell: bash
-      run: |
-        poetry env use ${{ env.PYTHON_VERSION_SET }}
     - name: Pre-commit
       # Run pre-commit directly if we found it on the PATH
       if: env.PRE_COMMIT_BIN != null
       shell: bash
-      run: |
-        pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_FILES }}
+      run: pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_FILES }}
     - name: Clean up
       # Delete the python version file if we created it
       if: steps.create-python-version-file.outputs.file-created == 'true'
