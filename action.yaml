@@ -131,7 +131,12 @@ runs:
           echo "::warning::Could not find commit range for commitlint"
           echo "::notice::Checking 20 most recent commit messages."
         fi
-        commitlint --config "${{ inputs.config-file }}" \
+        CONFIG_FILE="${{ inputs.config-file }}"
+        if [[ -n "$CONFIG_FILE" ]]; then
+          CONFIG_FILE="--config $CONFIG_FILE"
+        fi
+        commitlint \
+          $CONFIG_FILE \
           --verbose \
           --color \
           --from "$FROM" \
