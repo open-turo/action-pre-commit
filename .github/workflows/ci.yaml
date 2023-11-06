@@ -53,7 +53,7 @@ jobs:
         uses: ./commitlint
 
   # test-oss tries to run pre-commit against open source repositories not in
-  # open-turo to make sure this is usuable outside the org.
+  # open-turo to make sure this is usable outside the org.
   # Repositories added to this list should have pre-commit hooks that don't
   # require external tooling to be installed.
   # Repositories added to this list must have passing pre-commit hooks.
