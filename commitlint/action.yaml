@@ -9,6 +9,9 @@ inputs:
     required: true
     description: Set this to "false" to customize conventional commit config
     default: "true"
+  restore-config:
+    description: Set to "false" to skip the configuration restore step
+    default: "true"
 
 runs:
   using: composite
@@ -99,7 +102,7 @@ runs:
           --from "$FROM" \
           --to HEAD
     - name: Restore commitlint config
-      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
+      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true' && inputs.restore-config == 'true'
       shell: bash
       run: |
         # Restore the commitlint config file if we wrote it
