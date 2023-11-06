@@ -76,8 +76,8 @@ runs:
       # This will skip the (slow) pyenv install if we triggered the above
       uses: open-turo/action-setup-tools@v1
     - name: Commitlint
-      # TODO: use a released version of this action
-      uses: open-turo/action-pre-commit/commitlint@conditionalize-config
+      # This version needs to be sync'd with the repo HEAD if a major version is cut
+      uses: open-turo/action-pre-commit/commitlint@v1
       with:
         restore-config: "false"
         config-file: ${{ inputs.config-file }}
