@@ -27,9 +27,9 @@ runs:
         # Write default commitlint config in the workspace.
         echo "extends: [\"@open-turo/commitlint-config-conventional\"]" \
           > "${{ inputs.config-file }}"
-        # XXX(shakefu): We have to list @commitlint/cli here otherwise `npm
-        # install` will try to remove it from the above step. There is no way to
-        # prevent this behavior that I'm aware of.
+        # We have to list @commitlint/cli here otherwise `npm install` will try
+        # to remove it from the above step. There is no way to prevent this
+        # behavior that I'm aware of.
         npm install --no-save --no-package-lock --no-audit --no-fund \
           --prefix "$RUNNER_TEMP" \
           "@open-turo/commitlint-config-conventional" \
