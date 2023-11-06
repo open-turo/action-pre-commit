@@ -47,7 +47,14 @@ runs:
             echo "::notice::Parsing base ref '$FROM'"
             # If we do have the base ref, it can be a branch name, so we want to
             # parse it. This will be a pass through for a SHA
-            FROM="$(git show-ref --hash "$FROM" | tail -n1)"
+            # via the event context, and we should try to find the default
+            # branch instead (see below)
+            if ! git show-ref --hash "$FROM" &>/dev/null; then
+              # No such ref, so we try the next step
+              FROM=""
+            else
+              FROM="$(git show-ref --hash "$FROM" | tail -n1)"
+            fi
           fi
         fi
         # If we don't have a base ref, we try to find the history to the default
@@ -80,12 +87,20 @@ runs:
           echo "::warning::Could not find commit range for commitlint"
           echo "::notice::Checking 20 most recent commit messages."
         fi
-        commitlint --config "${{ inputs.config-file }}" \
+        CONFIG_FILE="${{ inputs.config-file }}"
+        if [[ -n "$CONFIG_FILE" ]]; then
+          CONFIG_FILE="--config $CONFIG_FILE"
+        fi
+        echo "::notice::Running commitlint"
+        commitlint \
+          $CONFIG_FILE \
           --verbose \
           --color \
           --from "$FROM" \
           --to HEAD
     - name: Restore commitlint config
-      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit
+      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
       shell: bash
-      run: git checkout -- "${{ inputs.config-file }}" || true
+      run: |
+        # Restore the commitlint config file if we wrote it
+        git checkout -- "${{ inputs.config-file }}" &>/dev/null || true
