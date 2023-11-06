@@ -32,7 +32,7 @@ runs:
       shell: bash
       run: |
         # Try to use local repo .node-version
-        NODE_VERSION="${NODE_VERSION:-$(cat ".node-version")}"
+        NODE_VERSION="${NODE_VERSION:-$(cat ".node-version" || true)}"
         # Try to use existing version
         NODE_VERSION="${NODE_VERSION:-$(node --version || true)}"
         # Try to use action default version
@@ -42,11 +42,13 @@ runs:
         echo "NODE_VERSION=${NODE_VERSION}" >> "$GITHUB_ENV"
 
         # Try to use local repo .python-version
-        PYTHON_VERSION="${PYTHON_VERSION:-$(cat ".python-version")}"
+        PYTHON_VERSION="${PYTHON_VERSION:-$(cat ".python-version" || true)}"
         # Try to use existing version
         PYTHON_VERSION="${PYTHON_VERSION:-$(python --version || true)}"
         # Try to use action default version
         PYTHON_VERSION="${PYTHON_VERSION:-$(cat "$GITHUB_ACTION_PATH/.python-version")}"
+        # Strip leading "Python " if it exists
+        PYTHON_VERSION="${PYTHON_VERSION//Python /}"
         # Write back the file if it doesn't exist
         [[ -f .python-version ]] || { echo "${PYTHON_VERSION#v}" > .python-version; echo "CLEAN_PYTHON_VERSION=true" >> "$GITHUB_ENV"; }
         echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
@@ -54,12 +56,14 @@ runs:
         # Finding pre-commit
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
-        echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
+        PRE_COMMIT_BIN=$(command -v pre-commit || true)
+        echo "PRE_COMMIT_BIN=$PRE_COMMIT_BIN" >> $GITHUB_ENV
 
         # Finding python
         # This will set an environment variable we can use to conditionally
         # install python.
-        echo "PYTHON_BIN=$(command -v python)" >> $GITHUB_ENV
+        PYTHON_BIN=$(command -v python || true)
+        echo "PYTHON_BIN=$PYTHON_BIN" >> $GITHUB_ENV
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
@@ -190,4 +194,4 @@ runs:
       shell: bash
       run: |
         # Restore the commitlint config file if we wrote it
-        git checkout -- "${{ inputs.config-file }}" || true
+        git checkout -- "${{ inputs.config-file }}" &>/dev/null || true
