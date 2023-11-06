@@ -18,6 +18,52 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Check for pre-commit-config.yaml
+      id: check-config
+      shell: bash
+      run: |
+        # Check for pre-commit-config.yaml
+        if [[ ! -f .pre-commit-config.yaml ]]; then
+          echo "::warning::No .pre-commit-config.yaml found, skipping pre-commit"
+          echo "found-config=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+    - name: Cancel workflow
+      uses: actions/github-script@v6
+      if: steps.check-config.outputs.found-config == 'false'
+      with:
+        result-encoding: string
+        retries: 3
+        script: |
+          github.rest.actions.cancelWorkflowRun({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+
+          let count = 180;
+          const check = () => {
+            count -= 1;
+            github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            }).then((run) => {
+              if (run.conclusion || run.status == "completed") {
+                return
+              }
+              console.log("Waiting for workflow to cancel")
+              console.log(run)
+
+              if (count > 0) {
+                setTimeout(check, 1000)
+              } else {
+                console.log("Workflow did not cancel in time")
+              }
+            })
+          }
+          setTimeout(check, 1)
+
     - name: Set node.js version
       if: hashFiles('.node-version') == ''
       shell: bash
@@ -98,7 +144,14 @@ runs:
             echo "::notice::Parsing base ref '$FROM'"
             # If we do have the base ref, it can be a branch name, so we want to
             # parse it. This will be a pass through for a SHA
-            FROM="$(git show-ref --hash "$FROM" | tail -n1)"
+            # via the event context, and we should try to find the default
+            # branch instead (see below)
+            if ! git show-ref --hash "$FROM" &>/dev/null; then
+              # No such ref, so we try the next step
+              FROM=""
+            else
+              FROM="$(git show-ref --hash "$FROM" | tail -n1)"
+            fi
           fi
         fi
         # If we don't have a base ref, we try to find the history to the default
@@ -135,6 +188,7 @@ runs:
         if [[ -n "$CONFIG_FILE" ]]; then
           CONFIG_FILE="--config $CONFIG_FILE"
         fi
+        echo "::notice::Running commitlint"
         commitlint \
           $CONFIG_FILE \
           --verbose \
