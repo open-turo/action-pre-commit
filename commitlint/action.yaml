@@ -47,7 +47,7 @@ runs:
         if [[ -z "$FROM" ]]; then
           FROM="${{ github.event.pull_request.base.ref }}"
           if [[ -n "$FROM" ]]; then
-            echo "::notice::Parsing base ref '$FROM'"
+            echo "::debug::Parsing base ref '$FROM'"
             # If we do have the base ref, it can be a branch name, so we want to
             # parse it. This will be a pass through for a SHA
             # via the event context, and we should try to find the default
@@ -65,7 +65,7 @@ runs:
         if [[ -z "$FROM" ]]; then
           # This finds the default branch name from the remote information, e.g. "main", and then parses it to a SHA
           FROM="$(git show-ref --hash "$(git remote show $(git remote -v | grep push | awk '{print $2}') | grep 'HEAD branch' | awk '{print $3}')" | tail -n1)"
-          echo "::notice::Could not find base ref, trying to use default branch"
+          echo "::debug::Could not find base ref, trying to use default branch"
           if ! git merge-base --is-ancestor "$FROM" HEAD; then
             echo "::warning::Default branch is not an ancestor of HEAD"
             FROM=""
@@ -81,20 +81,20 @@ runs:
           if ! git merge-base --is-ancestor "$FROM" HEAD; then
             echo "::warning::Before commit $FROM is not an ancestor of HEAD"
           else
-            echo "::notice::Checking commits since $FROM (usually the latest commit)."
+            echo "::debug::Checking commits since $FROM (usually the latest commit)."
           fi
         fi
         # Default to looking at the last 20 commits otherwise.
         if [[ -z "$FROM" ]]; then
           FROM="HEAD~20"
           echo "::warning::Could not find commit range for commitlint"
-          echo "::notice::Checking 20 most recent commit messages."
+          echo "::debug::Checking 20 most recent commit messages."
         fi
         CONFIG_FILE="${{ inputs.config-file }}"
         if [[ -n "$CONFIG_FILE" ]]; then
           CONFIG_FILE="--config $CONFIG_FILE"
         fi
-        echo "::notice::Running commitlint"
+        echo "::debug::Running commitlint"
         commitlint \
           $CONFIG_FILE \
           --verbose \
