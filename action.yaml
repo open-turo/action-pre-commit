@@ -19,94 +19,53 @@ runs:
   using: composite
   steps:
     - name: Check for pre-commit-config.yaml
-      id: check-config
+      id: pre-commit-config
       shell: bash
       run: |
         # Check for pre-commit-config.yaml
         if [[ ! -f .pre-commit-config.yaml ]]; then
           echo "::warning::No .pre-commit-config.yaml found, skipping pre-commit"
-          echo "found-config=false" >> $GITHUB_OUTPUT
+          echo "exists=false" >> $GITHUB_OUTPUT
           exit 0
         fi
-    - name: Cancel workflow
-      uses: actions/github-script@v6
-      if: steps.check-config.outputs.found-config == 'false'
-      with:
-        result-encoding: string
-        retries: 3
-        script: |
-          github.rest.actions.cancelWorkflowRun({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            run_id: context.runId,
-          });
-
-          let count = 180;
-          const check = () => {
-            count -= 1;
-            github.rest.actions.getWorkflowRun({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: context.runId,
-            }).then((run) => {
-              if (run.conclusion || run.status == "completed") {
-                return
-              }
-              console.log("Waiting for workflow to cancel")
-              console.log(run)
-
-              if (count > 0) {
-                setTimeout(check, 1000)
-              } else {
-                console.log("Workflow did not cancel in time")
-              }
-            })
-          }
-          setTimeout(check, 1)
-
-    - name: Set node.js version
-      if: hashFiles('.node-version') == ''
+    - name: Version files
       shell: bash
       run: |
-        # Get the existing node version, if the command exists
-        desired_version="$(node --version || true)"
-        # Chain defaults to get a good value
-        desired_version="${desired_version:-${NODENV_VERSION:-${NODE_VERSION:-16.19.1}}}"
-        # Strip the leading "v" in e.g. "v16.0.0", since .node-version will not work with it
-        desired_version="${desired_version#v}"
-        # Set the version so action-setup-tools can use it later
-        echo "$desired_version" > .node-version
-    - name: Set Python version
-      if: hashFiles('.python-version') == ''
-      id: create-python-version-file
-      shell: bash
-      run: |
-        # Use the .python-version from the action repo as the default version
+        # Try to use local repo .node-version
+        NODE_VERSION="${NODE_VERSION:-$(cat ".node-version")}"
+        # Try to use existing version
+        NODE_VERSION="${NODE_VERSION:-$(node --version || true)}"
+        # Try to use action default version
+        NODE_VERSION="${NODE_VERSION:-$(cat "$GITHUB_ACTION_PATH/.node-version")}"
+        # Write back the file if it doesn't exist
+        [[ -f .node-version ]] || { echo "${NODE_VERSION#v}" > .node-version; echo "CLEAN_NODE_VERSION=true" >> "$GITHUB_ENV"; }
+        echo "NODE_VERSION=${NODE_VERSION}" >> "$GITHUB_ENV"
+
+        # Try to use local repo .python-version
+        PYTHON_VERSION="${PYTHON_VERSION:-$(cat ".python-version")}"
+        # Try to use existing version
+        PYTHON_VERSION="${PYTHON_VERSION:-$(python --version || true)}"
+        # Try to use action default version
         PYTHON_VERSION="${PYTHON_VERSION:-$(cat "$GITHUB_ACTION_PATH/.python-version")}"
-        echo "$PYTHON_VERSION" > .python-version
+        # Write back the file if it doesn't exist
+        [[ -f .python-version ]] || { echo "${PYTHON_VERSION#v}" > .python-version; echo "CLEAN_PYTHON_VERSION=true" >> "$GITHUB_ENV"; }
         echo "PYTHON_VERSION=${PYTHON_VERSION}" >> "$GITHUB_ENV"
-        # Store as output that the file was created so we can clean up afterwards
-        echo "file-created=true" >> "$GITHUB_OUTPUT"
-    - name: Find pre-commit
-      shell: bash
-      run: |
+
         # Finding pre-commit
         # This will set an environment variable we can use to conditionally
         # install pre-commit if needed and toggle how the action runs.
         echo "PRE_COMMIT_BIN=$(command -v pre-commit)" >> $GITHUB_ENV
-    - name: Find python
-      shell: bash
-      run: |
+
         # Finding python
         # This will set an environment variable we can use to conditionally
         # install python.
         echo "PYTHON_BIN=$(command -v python)" >> $GITHUB_ENV
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
-      if: env.PYTHON_BIN == null
+      if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v4
-      # with:
-      #   python-version: 3.10.2
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
     - name: Install tools
       # This will skip the (slow) pyenv install if we triggered the above
       uses: open-turo/action-setup-tools@v1
@@ -195,42 +154,40 @@ runs:
           --color \
           --from "$FROM" \
           --to HEAD
+    - name: Get changed files
+      uses: tj-actions/changed-files@v40
+      if: inputs.only-changed == 'true'
+      id: changed-files
+    - name: Select files to run pre-commit against
+      shell: bash
+      run: |
+        echo "PRE_COMMIT_ARGS=--all-files" >> "$GITHUB_ENV"
+        [[ "${{ steps.changed-files.outputs.any_changed }}" == "true" ]] || exit 0
+        if [[ "${{ inputs.only-changed }}" == "true" ]]; then
+          PRE_COMMIT_ARGS="--files ${{ steps.changed-files.outputs.files}}"
+          echo "PRE_COMMIT_ARGS=$PRE_COMMIT_ARGS" >> "$GITHUB_ENV"
+        fi
+    - name: Pre-commit (action)
+      # Same as above, this will install and run pre-commit for us
+      if: env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
+      uses: pre-commit/action@v3.0.0
+      with:
+        extra_args: ${{ env.PRE_COMMIT_ARGS }}
+    - name: Pre-commit (from PATH)
+      # Run pre-commit directly if we found it on the PATH
+      if: env.PRE_COMMIT_BIN != null && steps.pre-commit-config.outputs.exists != 'false'
+      shell: bash
+      run: pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_ARGS }}
+    - name: Clean up version files
+      if: always()
+      shell: bash
+      run: |
+        # Clean up version files if we wrote them
+        [[ "${{ env.CLEAN_PYTHON_VERSION }}" == "" ]] || rm .python-version
+        [[ "${{ env.CLEAN_NODE_VERSION }}" == "" ]] || rm .node-version
     - name: Restore commitlint config
       if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
       shell: bash
-      run: git checkout -- "${{ inputs.config-file }}" || true
-    # Collect file changes
-    - name: Find changed files
-      if: inputs.only-changed == 'true'
-      uses: trilom/file-changes-action@v1.2.4
-      id: file_changes
-      with:
-        output: " "
-    # Export changed file names for use in pre-commit action
-    - name: Limit pre-commit to changed files
-      if: inputs.only-changed == 'true'
-      shell: bash
       run: |
-        PRE_COMMIT_FILES="--files ${{ steps.file_changes.outputs.files}}"
-        echo PRE_COMMIT_FILES="$PRE_COMMIT_FILES" >> $GITHUB_ENV
-    # If we aren't only looking at changed files, then export the --all-files arg
-    - name: Run pre-commit against all files
-      if: inputs.only-changed != 'true'
-      shell: bash
-      run: echo PRE_COMMIT_FILES="--all-files" >> $GITHUB_ENV
-    - name: Pre-commit
-      # Same as above, this will install and run pre-commit for us
-      if: env.PRE_COMMIT_BIN == null
-      uses: pre-commit/action@v3.0.0
-      with:
-        extra_args: ${{ env.PRE_COMMIT_FILES }}
-    - name: Pre-commit
-      # Run pre-commit directly if we found it on the PATH
-      if: env.PRE_COMMIT_BIN != null
-      shell: bash
-      run: pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_FILES }}
-    - name: Clean up
-      # Delete the python version file if we created it
-      if: steps.create-python-version-file.outputs.file-created == 'true'
-      shell: bash
-      run: rm .python-version
+        # Restore the commitlint config file if we wrote it
+        git checkout -- "${{ inputs.config-file }}" || true
