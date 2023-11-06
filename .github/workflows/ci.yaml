@@ -73,5 +73,4 @@ jobs:
         with:
           repository: ${{ matrix.repos }}
       - name: Pre-commit
-        # TODO: use a released version of this action
-        uses: open-turo/action-pre-commit@conditionalize-config
+        uses: open-turo/action-pre-commit@v1
