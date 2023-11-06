@@ -18,6 +18,6 @@ repos:
         stages: [commit-msg]
         additional_dependencies: ["@open-turo/commitlint-config-conventional"]
   - repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: 2.1.5 # or specific git tag
+    rev: 3.0.0 # or specific git tag
     hooks:
       - id: shellcheck
