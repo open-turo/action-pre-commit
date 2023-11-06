@@ -22,6 +22,19 @@ jobs:
       - name: Pre-commit
         uses: ./
 
+  test-only-changed:
+    name: Test / Only changed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Pre-commit
+        uses: ./
+        with:
+          only-changed: true
+
   test-pre-installed:
     name: Test / Pre-commit exists
     runs-on: ubuntu-latest
