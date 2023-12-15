@@ -1,6 +1,12 @@
 # `open-turo/action-pre-commit`
 
-GitHub Action for running pre-commit hooks against the consumer repository. Conditionally installs tools needed for the Action to be able to perform its duties such as `npm`, `pre-commit`, etc.
+<!-- prettier-ignore-start -->
+<!-- action-docs-description -->
+## Description
+
+GitHub Action for running pre-commit hooks against the repository. Conditionally installs tools needed for the Action to be able to perform its duties such as `npm`, `pre-commit`, etc.
+<!-- action-docs-description -->
+<!-- prettier-ignore-end -->
 
 [![Release](https://img.shields.io/github/v/release/open-turo/action-pre-commit)](https://github.com/open-turo/action-pre-commit/releases/)
 [![Tests pass/fail](https://img.shields.io/github/workflow/status/open-turo/action-pre-commit/CI)](https://github.com/open-turo/action-pre-commit/actions/)
@@ -44,17 +50,27 @@ jobs:
           only-changed: true
 ```
 
+<!-- prettier-ignore-start -->
+<!-- action-docs-inputs -->
 ## Inputs
 
-| parameter                | description                                                                                    | required | default            |
-| ------------------------ | ---------------------------------------------------------------------------------------------- | -------- | ------------------ |
-| config-file              | The config file to present to commitlint-github-action                                         | `true`   | .commitlintrc.yaml |
-| turo-conventional-commit | Set this to "false" to customize conventional commit configuration                             | `true`   | true               |
-| only-changed             | Set this to "true" to only run pre-commit against changed files, and not the entire repository | `false`  |                    |
+| parameter | description | required | default |
+| --- | --- | --- | --- |
+| config-file | The config file to present to commitlint-github-action | `true` | .commitlintrc.yaml |
+| turo-conventional-commit | Set this to "false" to customize conventional commit configuration | `true` | true |
+| only-changed | Set this to "true" to only run pre-commit against changed files, and not the entire repository | `false` |  |
+<!-- action-docs-inputs -->
 
+<!-- action-docs-outputs -->
+
+<!-- action-docs-outputs -->
+
+<!-- action-docs-runs -->
 ## Runs
 
-This action is an `composite` action.
+This action is a `composite` action.
+<!-- action-docs-runs -->
+<!-- prettier-ignore-end -->
 
 ## Get Help
 
