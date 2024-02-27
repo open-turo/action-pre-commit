@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: open-turo/action-pre-commit@v1
+      - uses: open-turo/action-pre-commit@v2
 ```
 
 Overriding defaults:
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
-      - uses: open-turo/action-pre-commit@v1
+      - uses: open-turo/action-pre-commit@v2
         with:
           # Override the config file used by default
           config-file: .commitlintrc.yaml
