@@ -5,10 +5,6 @@ inputs:
     required: true
     description: The config file to present to commitlint-github-action
     default: .commitlintrc.yaml
-  turo-conventional-commit:
-    required: true
-    description: Set this to "false" to customize conventional commit configuration
-    default: "true"
   only-changed:
     required: false
     description: >-
@@ -75,13 +71,6 @@ runs:
     - name: Install tools
       # This will skip the (slow) pyenv install if we triggered the above
       uses: open-turo/action-setup-tools@v1
-    - name: Commitlint
-      # This version needs to be sync'd with the repo HEAD if a major version is cut
-      uses: open-turo/action-pre-commit/commitlint@v1
-      with:
-        restore-config: "false"
-        config-file: ${{ inputs.config-file }}
-        turo-conventional-commit: ${{ inputs.turo-conventional-commit }}
     - name: Get changed files
       uses: tj-actions/changed-files@v40
       if: inputs.only-changed == 'true'
@@ -113,9 +102,3 @@ runs:
         # Clean up version files if we wrote them
         [[ "${{ env.CLEAN_PYTHON_VERSION }}" == "" ]] || rm .python-version
         [[ "${{ env.CLEAN_NODE_VERSION }}" == "" ]] || rm .node-version
-    - name: Restore commitlint config
-      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
-      shell: bash
-      run: |
-        # Restore the commitlint config file if we wrote it
-        git checkout -- "${{ inputs.config-file }}" &>/dev/null || true
