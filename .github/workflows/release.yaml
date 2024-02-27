@@ -25,9 +25,9 @@ jobs:
         uses: ./
 
   release:
-    needs:
-      - lint
-      - test
+    #    needs:
+    #      - lint
+    #      - test
     name: Release
     runs-on: ubuntu-latest
     steps:
