@@ -54,17 +54,6 @@ jobs:
       - name: Pre-commit
         uses: ./
 
-  test-commitlint:
-    name: Test / Commitlint
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Commitlint
-        uses: ./commitlint
-
   # test-oss tries to run pre-commit against open source repositories not in
   # open-turo to make sure this is usable outside the org.
   # Repositories added to this list should have pre-commit hooks that don't
