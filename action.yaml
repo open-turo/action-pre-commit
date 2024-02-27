@@ -77,7 +77,7 @@ runs:
       uses: open-turo/action-setup-tools@v1
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
-      uses: open-turo/action-pre-commit/commitlint@v1
+      uses: open-turo/action-pre-commit/commitlint@v2
       with:
         restore-config: "false"
         config-file: ${{ inputs.config-file }}
