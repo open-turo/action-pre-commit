@@ -86,4 +86,4 @@ jobs:
         with:
           repository: ${{ matrix.repos }}
       - name: Pre-commit
-        uses: open-turo/action-pre-commit@v1
+        uses: open-turo/action-pre-commit@v2
