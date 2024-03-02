@@ -85,5 +85,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: ${{ matrix.repos }}
+      - uses: actions/checkout@v4
+        with:
+          path: this
       - name: Pre-commit
-        uses: open-turo/action-pre-commit@v2
+        uses: ./this
