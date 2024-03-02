@@ -9,6 +9,6 @@ for i in "$@"; do
     continue
   fi
   readme_file=$(dirname "$i")/README.md
-  echo npx action-docs --no-banner -a "${i}" --update-readme "${readme_file}"
-  npx action-docs --no-banner -a "${i}" --update-readme "${readme_file}"
+  echo npx action-docs@^1 --no-banner -a "${i}" --update-readme "${readme_file}"
+  npx action-docs@^1 --no-banner -a "${i}" --update-readme "${readme_file}"
 done
