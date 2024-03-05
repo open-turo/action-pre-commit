@@ -54,7 +54,7 @@ runs:
         node-version-file: .node-version
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
-      uses: open-turo/action-pre-commit/commitlint@f/make_action_pre_commit_faster
+      uses: open-turo/action-pre-commit/commitlint@v3
       with:
         restore-config: "false"
         config-file: ${{ inputs.config-file }}
