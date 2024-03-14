@@ -87,7 +87,6 @@ runs:
           PRE_COMMIT_ARGS="--files ${{ steps.changed-files.outputs.changes_files }}"
           echo "PRE_COMMIT_ARGS=$PRE_COMMIT_ARGS" >> "$GITHUB_ENV"
         fi
-
     - name: Compute pre-commit cache key
       if: inputs.s3-bucket-name != ''
       id: pre_commit_cache_key
@@ -107,18 +106,13 @@ runs:
       env:
         AWS_REGION: ${{ inputs.s3-bucket-region }}
         cache-name: ${{ github.event.repository.name }}/cache-pre-commit
-
-    - name: Pre-commit (action)
-      # Same as above, this will install and run pre-commit for us
+    - name: Install Pre-commit
       if: env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
-      uses: pre-commit/action@v3.0.1
-      with:
-        extra_args: ${{ env.PRE_COMMIT_ARGS }}
-      env:
-        PRE_COMMIT_HOME: ${{ runner.temp }}/${{ github.event.repository.name }}/cache-pre-commit-${{ steps.pre_commit_cache_key.outputs.key }}
+      run: |
+        pip install pre-commit
+        pip freeze --local
+      shell: bash
     - name: Pre-commit (from PATH)
-      # Run pre-commit directly if we found it on the PATH
-      if: env.PRE_COMMIT_BIN != null && steps.pre-commit-config.outputs.exists != 'false'
       shell: bash
       run: pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_ARGS }}
       env:
