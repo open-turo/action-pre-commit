@@ -58,6 +58,7 @@ jobs:
 | --- | --- | --- | --- |
 | config-file | The config file to present to commitlint-github-action | `true` | .commitlintrc.yaml |
 | turo-conventional-commit | Set this to "false" to customize conventional commit configuration | `true` | true |
+| install-pre-commit | Set this to "true" to install pre-commit. This can be useful when your pre-commit hooks need a specific python version | `false` | false |
 | only-changed | Set this to "true" to only run pre-commit against changed files, and not the entire repository | `false` |  |
 <!-- action-docs-inputs -->
 
