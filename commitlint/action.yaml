@@ -1,109 +1,28 @@
-name: Commitlint
-description: GitHub Action for running commitlint within the pre-commit action.
+name: Commitlint Action
+description: Github action to run commitlint
 inputs:
-  config-file:
-    required: true
-    description: The config file to present to commitlint-github-action
-    default: .commitlintrc.yaml
-  turo-conventional-commit:
-    required: true
-    description: Set this to "false" to customize conventional commit config
-    default: "true"
-  restore-config:
-    description: Set to "false" to skip the configuration restore step
-    default: "true"
+  node-version:
+    description: "Node version"
+    required: false
+    default: "16"
 
 runs:
-  using: composite
+  using: "composite"
   steps:
-    - name: Install @commitlint/cli
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ inputs.node-version }}
+    - name: Install commitlint
+      run: npm install --save-dev @commitlint/cli @commitlint/config-conventional @open-turo/commitlint-config-conventional
       shell: bash
+    - name: Run commitlint for pull requests
+      if: ${{ github.event_name == 'pull_request' }}
       run: |
-        npm install --no-save --no-package-lock --no-audit --no-fund \
-          --prefix "$RUNNER_TEMP" "@commitlint/cli@^18"
-        echo "$RUNNER_TEMP/node_modules/.bin" >> $GITHUB_PATH
-        echo "NODE_PATH=$RUNNER_TEMP/node_modules" >> $GITHUB_ENV
-    - name: Use default conventional commit config
-      if: inputs.turo-conventional-commit
+        npx commitlint --from origin/${{ github.base_ref }} --to HEAD --verbose
       shell: bash
+    - name: Run commitlint for push to main
+      if: ${{ github.event_name == 'push' }}
       run: |
-        # Write default commitlint config in the workspace.
-        echo "extends: [\"@open-turo/commitlint-config-conventional\"]" \
-          > "${{ inputs.config-file }}"
-        # We have to list @commitlint/cli here otherwise `npm install` will try
-        # to remove it from the above step. There is no way to prevent this
-        # behavior that I'm aware of.
-        npm install --no-save --no-package-lock --no-audit --no-fund \
-          --prefix "$RUNNER_TEMP" \
-          "@open-turo/commitlint-config-conventional" \
-          "@commitlint/cli@^18"
-    - name: Commitlint
-      if: hashFiles(inputs.config-file) != ''
+        npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose
       shell: bash
-      run: |
-        # Commitlint
-        # Look for the base ref to compare against the current head in the
-        # pull_request event metadata.
-        if [[ -z "$FROM" ]]; then
-          FROM="${{ github.event.pull_request.base.ref }}"
-          if [[ -n "$FROM" ]]; then
-            echo "::debug::Parsing base ref '$FROM'"
-            # If we do have the base ref, it can be a branch name, so we want to
-            # parse it. This will be a pass through for a SHA
-            # via the event context, and we should try to find the default
-            # branch instead (see below)
-            if ! git show-ref --hash "$FROM" &>/dev/null; then
-              # No such ref, so we try the next step
-              FROM=""
-            else
-              FROM="$(git show-ref --hash "$FROM" | tail -n1)"
-            fi
-          fi
-        fi
-        # If we don't have a base ref, we try to find the history to the default
-        # branch, e.g. main, which should be a sane check.
-        if [[ -z "$FROM" ]]; then
-          # This finds the default branch name from the remote information, e.g. "main", and then parses it to a SHA
-          FROM="$(git show-ref --hash "$(git remote show $(git remote -v | grep push | awk '{print $2}') | grep 'HEAD branch' | awk '{print $3}')" | tail -n1)"
-          echo "::debug::Could not find base ref, trying to use default branch"
-          if ! git merge-base --is-ancestor "$FROM" HEAD; then
-            echo "::warning::Default branch is not an ancestor of HEAD"
-            FROM=""
-          fi
-        fi
-        # If the pull_request event metadata doesn't exist, try to grab the
-        # "before" commit from the push event metadata. This will usually only
-        # give us a single commit to check, but it'll be the latest one.
-        if [[ -z "$FROM" ]]; then
-          # This is a SHA so no parsing needed
-          FROM="${{ github.event.before }}"
-          echo "::warning::Could not find ancestor ref, falling back"
-          if ! git merge-base --is-ancestor "$FROM" HEAD; then
-            echo "::warning::Before commit $FROM is not an ancestor of HEAD"
-          else
-            echo "::debug::Checking commits since $FROM (usually the latest commit)."
-          fi
-        fi
-        # Default to looking at the last 20 commits otherwise.
-        if [[ -z "$FROM" ]]; then
-          FROM="HEAD~20"
-          echo "::warning::Could not find commit range for commitlint"
-          echo "::debug::Checking 20 most recent commit messages."
-        fi
-        CONFIG_FILE="${{ inputs.config-file }}"
-        if [[ -n "$CONFIG_FILE" ]]; then
-          CONFIG_FILE="--config $CONFIG_FILE"
-        fi
-        echo "::debug::Running commitlint"
-        commitlint \
-          $CONFIG_FILE \
-          --verbose \
-          --color \
-          --from "$FROM" \
-          --to HEAD
-    - name: Restore commitlint config
-      if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true' && inputs.restore-config == 'true'
-      shell: bash
-      run: |
-        # Restore the commitlint config file if we wrote it
-        git checkout -- "${{ inputs.config-file }}" &>/dev/null || true
