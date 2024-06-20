@@ -4,16 +4,14 @@
 <!-- action-docs-description -->
 ## Description
 
-GitHub Action for running commitlint within the pre-commit action.
+Github action to run commitlint
 <!-- action-docs-description -->
 <!-- action-docs-inputs -->
 ## Inputs
 
 | parameter | description | required | default |
 | --- | --- | --- | --- |
-| config-file | The config file to present to commitlint-github-action | `true` | .commitlintrc.yaml |
-| turo-conventional-commit | Set this to "false" to customize conventional commit config | `true` | true |
-| restore-config | Set to "false" to skip the configuration restore step | `false` | true |
+| node-version | Node version | `false` | 16 |
 <!-- action-docs-inputs -->
 
 <!-- action-docs-outputs -->
