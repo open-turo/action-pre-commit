@@ -9,6 +9,11 @@ inputs:
     required: true
     description: Set this to "false" to customize conventional commit configuration
     default: "true"
+  install-pre-commit:
+    required: false
+    description: >-
+      Set this to "true" to install pre-commit. This can be useful when your pre-commit hooks need a specific python version
+    default: "false"
   only-changed:
     required: false
     description: >-
@@ -43,9 +48,15 @@ runs:
         PYTHON_BIN=$(command -v python || true)
         echo "PYTHON_BIN=$PYTHON_BIN" >> $GITHUB_ENV
     - name: Setup python
-      # Only run this if we don't already have a pre-commit on the PATH
-      if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
+      # Only run this if we don't already have a pre-commit on the PATH or if install-pre-commit is set to true
+      if: (env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false') || inputs.install-pre-commit == 'true'
       uses: actions/setup-python@v5
+    - name: Install pre-commit
+      # Only run this if we don't already have a pre-commit on the PATH or if install-pre-commit is set to true
+      if: inputs.install-pre-commit == 'true'
+      shell: bash
+      run: |
+        python -m pip install pre-commit
     - name: Setup node
       uses: actions/setup-node@v4
       with:
