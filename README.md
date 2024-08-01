@@ -59,10 +59,16 @@ jobs:
 | config-file | The config file to present to commitlint-github-action | `true` | .commitlintrc.yaml |
 | turo-conventional-commit | Set this to "false" to customize conventional commit configuration | `true` | true |
 | only-changed | Set this to "true" to only run pre-commit against changed files, and not the entire repository | `false` |  |
+| s3-bucket-name | S3 bucket name to cache node_modules to speed up dependency installation. | `false` |  |
+| s3-bucket-region | S3 bucket region to cache node_modules to speed up dependency installation. | `false` |  |
 <!-- action-docs-inputs -->
 
 <!-- action-docs-outputs -->
+## Outputs
 
+| parameter | description |
+| --- | --- |
+| cache-hit | Whether the cache was hit when installing dependencies |
 <!-- action-docs-outputs -->
 
 <!-- action-docs-runs -->
