@@ -70,7 +70,7 @@ runs:
         config-file: ${{ inputs.config-file }}
         turo-conventional-commit: ${{ inputs.turo-conventional-commit }}
     - name: Get changed files
-      uses: tj-actions/changed-files@v44
+      uses: tj-actions/changed-files@v45
       if: inputs.only-changed == 'true'
       id: changed-files
     - name: Select files to run pre-commit against
