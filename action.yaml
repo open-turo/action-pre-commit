@@ -83,7 +83,12 @@ runs:
         config-file: ${{ inputs.config-file }}
         turo-conventional-commit: ${{ inputs.turo-conventional-commit }}
     - name: Get changed files
-      uses: tj-actions/changed-files@v40
+      uses: dorny/paths-filter@v3
+      with:
+        list-files: shell
+        filters: |
+          changes:
+            - '**'
       if: inputs.only-changed == 'true'
       id: changed-files
     - name: Select files to run pre-commit against
@@ -92,7 +97,7 @@ runs:
         echo "PRE_COMMIT_ARGS=--all-files" >> "$GITHUB_ENV"
         [[ "${{ steps.changed-files.outputs.all_changed_files_count }}" != "0" ]] || exit 0
         if [[ "${{ inputs.only-changed }}" == "true" ]]; then
-          PRE_COMMIT_ARGS="--files ${{ steps.changed-files.outputs.all_changed_files }}"
+          PRE_COMMIT_ARGS="--files ${{ steps.changed-files.outputs.changes_files }}"
           echo "PRE_COMMIT_ARGS=$PRE_COMMIT_ARGS" >> "$GITHUB_ENV"
         fi
     - name: Pre-commit (action)

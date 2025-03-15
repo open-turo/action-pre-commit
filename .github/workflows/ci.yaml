@@ -76,7 +76,6 @@ jobs:
     strategy:
       matrix:
         repos:
-          - google/uv-metrics
           - toml-lang/toml
           - pre-commit/pre-commit
           - actions/starter-workflows
