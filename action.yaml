@@ -56,12 +56,22 @@ runs:
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v5
+    - name: Detect node version file
+      id: node-version-file
+      shell: bash
+      run: |
+        # Check for .node-version or .nvmrc file
+        if [[ -f .node-version ]]; then
+          echo "FILENAME=.node-version" >> $GITHUB_ENV
+        elif [[ -f .nvmrc ]]; then
+          echo "FILENAME=.nvmrc" >> $GITHUB_ENV
+        fi
     - name: Setup node
       uses: actions/setup-node@v4
       with:
-        # Default to node 20 but use the .node-version file if it exists in the consumer repo
+        # Default to node 22 but use the .node-version or .nvmrc file if either exists in the consumer repo
         node-version: "22"
-        node-version-file: .node-version
+        node-version-file: ${{ steps.node-version-file.outputs.FILENAME }}
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
       uses: open-turo/action-pre-commit/commitlint@v3
