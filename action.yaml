@@ -20,6 +20,9 @@ inputs:
   s3-bucket-region:
     required: false
     description: S3 bucket region to cache node_modules to speed up dependency installation.
+  github-token:
+    required: false
+    description: Sets a GitHub token that allows pre-commit to fetch private repos
 outputs:
   cache-hit:
     description: Whether the cache was hit when installing dependencies
@@ -28,6 +31,12 @@ outputs:
 runs:
   using: composite
   steps:
+    - name: Setup Git Auth for Private GitHub Repos
+      if: inputs.github-token != ''
+      shell: bash
+      run: |
+        git config --global url."https://x-access-token:${{ inputs.github-token }}@github.com/".insteadOf "https://github.com/"
+
     - name: Check for pre-commit-config.yaml
       id: pre-commit-config
       shell: bash
