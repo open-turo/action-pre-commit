@@ -34,8 +34,10 @@ runs:
     - name: Setup Git Auth for Private GitHub Repos
       if: inputs.github-token != ''
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        git config --global url."https://x-access-token:${{ inputs.github-token }}@github.com/".insteadOf "https://github.com/"
+        git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
 
     - name: Check for pre-commit-config.yaml
       id: pre-commit-config
@@ -89,11 +91,15 @@ runs:
       id: changed-files
     - name: Select files to run pre-commit against
       shell: bash
+      env:
+        CHANGED_FILES: ${{ steps.changed-files.outputs.changes_files }}
+        ONLY_CHANGED: ${{ inputs.only-changed }}
+        CHANGED_FILES_COUNT: ${{ steps.changed-files.outputs.all_changed_files_count }}
       run: |
         echo "PRE_COMMIT_ARGS=--all-files" >> "$GITHUB_ENV"
-        [[ "${{ steps.changed-files.outputs.all_changed_files_count }}" != "0" ]] || exit 0
-        if [[ "${{ inputs.only-changed }}" == "true" ]]; then
-          PRE_COMMIT_ARGS="--files ${{ steps.changed-files.outputs.changes_files }}"
+        [[ "$CHANGED_FILES_COUNT" != "0" ]] || exit 0
+        if [[ "$ONLY_CHANGED" == "true" ]]; then
+          PRE_COMMIT_ARGS="--files $CHANGED_FILES"
           echo "PRE_COMMIT_ARGS=$PRE_COMMIT_ARGS" >> "$GITHUB_ENV"
         fi
 
@@ -136,6 +142,8 @@ runs:
     - name: Restore commitlint config
       if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
       shell: bash
+      env:
+        CONFIG_FILE: ${{ inputs.config-file }}
       run: |
         # Restore the commitlint config file if we wrote it
-        git checkout -- "${{ inputs.config-file }}" &>/dev/null || true
+        git checkout -- "$CONFIG_FILE" &>/dev/null || true

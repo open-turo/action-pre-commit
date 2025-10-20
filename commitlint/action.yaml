@@ -26,10 +26,12 @@ runs:
     - name: Use default conventional commit config
       if: inputs.turo-conventional-commit
       shell: bash
+      env:
+        CONFIG_FILE: ${{ inputs.config-file }}
       run: |
         # Write default commitlint config in the workspace.
         echo "extends: [\"@open-turo/commitlint-config-conventional\"]" \
-          > "${{ inputs.config-file }}"
+          > "$CONFIG_FILE"
         # We have to list @commitlint/cli here otherwise `npm install` will try
         # to remove it from the above step. There is no way to prevent this
         # behavior that I'm aware of.
@@ -40,12 +42,16 @@ runs:
     - name: Commitlint
       if: hashFiles(inputs.config-file) != ''
       shell: bash
+      env:
+        PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        BEFORE_COMMIT: ${{ github.event.before }}
+        CONFIG_FILE: ${{ inputs.config-file }}
       run: |
         # Commitlint
         # Look for the base ref to compare against the current head in the
         # pull_request event metadata.
         if [[ -z "$FROM" ]]; then
-          FROM="${{ github.event.pull_request.base.ref }}"
+          FROM="$PR_BASE_REF"
           if [[ -n "$FROM" ]]; then
             echo "::debug::Parsing base ref '$FROM'"
             # If we do have the base ref, it can be a branch name, so we want to
@@ -76,7 +82,7 @@ runs:
         # give us a single commit to check, but it'll be the latest one.
         if [[ -z "$FROM" ]]; then
           # This is a SHA so no parsing needed
-          FROM="${{ github.event.before }}"
+          FROM="$BEFORE_COMMIT"
           echo "::warning::Could not find ancestor ref, falling back"
           if ! git merge-base --is-ancestor "$FROM" HEAD; then
             echo "::warning::Before commit $FROM is not an ancestor of HEAD"
@@ -90,13 +96,13 @@ runs:
           echo "::warning::Could not find commit range for commitlint"
           echo "::debug::Checking 20 most recent commit messages."
         fi
-        CONFIG_FILE="${{ inputs.config-file }}"
+        CONFIG_ARG=""
         if [[ -n "$CONFIG_FILE" ]]; then
-          CONFIG_FILE="--config $CONFIG_FILE"
+          CONFIG_ARG="--config $CONFIG_FILE"
         fi
         echo "::debug::Running commitlint"
         commitlint \
-          $CONFIG_FILE \
+          $CONFIG_ARG \
           --verbose \
           --color \
           --from "$FROM" \
@@ -104,6 +110,8 @@ runs:
     - name: Restore commitlint config
       if: always() && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true' && inputs.restore-config == 'true'
       shell: bash
+      env:
+        CONFIG_FILE: ${{ inputs.config-file }}
       run: |
         # Restore the commitlint config file if we wrote it
-        git checkout -- "${{ inputs.config-file }}" &>/dev/null || true
+        git checkout -- "$CONFIG_FILE" &>/dev/null || true
