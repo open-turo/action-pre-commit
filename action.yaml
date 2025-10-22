@@ -68,7 +68,7 @@ runs:
       if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v6
     - name: Setup node
-      uses: actions/setup-node@v5
+      uses: actions/setup-node@v6
       with:
         # Default to node 20 but use the .node-version file if it exists in the consumer repo
         node-version: "24"
