@@ -71,7 +71,7 @@ runs:
       uses: actions/setup-node@v5
       with:
         # Default to node 20 but use the .node-version file if it exists in the consumer repo
-        node-version: "22"
+        node-version: "24"
         node-version-file: .node-version
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
