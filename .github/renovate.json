@@ -1,3 +1,14 @@
 {
-  "extends": ["github>open-turo/renovate-config#v1.17.0"]
+  "extends": ["github>open-turo/renovate-config#v1.17.0"],
+  "regexManagers": [
+    {
+      "fileMatch": ["^action\\.yaml$"],
+      "matchStrings": [
+        "# Default Node version is v(?<currentValue>\\d+)",
+        "echo \"version=(?<currentValue>\\d+)\" >> \\$GITHUB_OUTPUT"
+      ],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "node-version"
+    }
+  ]
 }
