@@ -71,9 +71,12 @@ runs:
       id: node-version
       shell: bash
       run: |
-        # Read version from .node-version file if it exists, otherwise fall back to v24
+        # Read version from .node-version or .nvmrc file if it exists, otherwise fall back to v24
         if [[ -f .node-version ]]; then
           NODE_VERSION=$(cat .node-version | tr -d '[:space:]')
+          echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
+        elif [[ -f .nvmrc ]]; then
+          NODE_VERSION=$(cat .nvmrc | tr -d '[:space:]')
           echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
         else
           # Default Node version is v24
