@@ -33,11 +33,9 @@ runs:
   steps:
     - name: Setup Git Auth for Private GitHub Repos
       if: inputs.github-token != ''
-      shell: bash
-      env:
-        GITHUB_TOKEN: ${{ inputs.github-token }}
-      run: |
-        git config --global url."https://x-access-token:${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/"
+      uses: open-turo/action-git-auth@v4
+      with:
+        github-token: ${{ inputs.github-token }}
 
     - name: Check for pre-commit-config.yaml
       id: pre-commit-config
