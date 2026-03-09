@@ -14,6 +14,9 @@ inputs:
     description: >-
       Set this to "true" to only run pre-commit against changed files, and not
       the entire repository
+  stage:
+    required: false
+    description: Set this to run pre-commit against a specific stage of the pre-commit hooks.
   s3-bucket-name:
     required: false
     description: S3 bucket name to cache node_modules to speed up dependency installation.
@@ -108,13 +111,17 @@ runs:
         CHANGED_FILES: ${{ steps.changed-files.outputs.changes_files }}
         ONLY_CHANGED: ${{ inputs.only-changed }}
         CHANGED_FILES_COUNT: ${{ steps.changed-files.outputs.all_changed_files_count }}
+        STAGE: ${{ inputs.stage }}
       run: |
-        echo "PRE_COMMIT_ARGS=--all-files" >> "$GITHUB_ENV"
-        [[ "$CHANGED_FILES_COUNT" != "0" ]] || exit 0
+        PRE_COMMIT_ARGS="--all-files"
         if [[ "$ONLY_CHANGED" == "true" ]]; then
+          [[ "$CHANGED_FILES_COUNT" != "0" ]] || exit 0
           PRE_COMMIT_ARGS="--files $CHANGED_FILES"
-          echo "PRE_COMMIT_ARGS=$PRE_COMMIT_ARGS" >> "$GITHUB_ENV"
         fi
+        if [[ "$STAGE" != "" ]]; then
+          PRE_COMMIT_ARGS="$PRE_COMMIT_ARGS --hook-stage $STAGE"
+        fi
+        echo "PRE_COMMIT_ARGS=$PRE_COMMIT_ARGS" >> "$GITHUB_ENV"
     - name: Compute pre-commit cache key
       if: inputs.s3-bucket-name != ''
       id: pre_commit_cache_key

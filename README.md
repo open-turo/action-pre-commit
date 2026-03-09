@@ -59,6 +59,7 @@ jobs:
 | config-file | The config file to present to commitlint-github-action | `true` | .commitlintrc.yaml |
 | turo-conventional-commit | Set this to "false" to customize conventional commit configuration | `true` | true |
 | only-changed | Set this to "true" to only run pre-commit against changed files, and not the entire repository | `false` |  |
+| stage | Set this to run pre-commit against a specific stage of the pre-commit hooks. | `false` |  |
 | s3-bucket-name | S3 bucket name to cache node_modules to speed up dependency installation. | `false` |  |
 | s3-bucket-region | S3 bucket region to cache node_modules to speed up dependency installation. | `false` |  |
 | github-token | Sets a GitHub token that allows pre-commit to fetch private repos | `false` |  |
