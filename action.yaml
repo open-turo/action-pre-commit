@@ -95,7 +95,7 @@ runs:
         config-file: ${{ inputs.config-file }}
         turo-conventional-commit: ${{ inputs.turo-conventional-commit }}
     - name: Get changed files
-      uses: dorny/paths-filter@v3
+      uses: dorny/paths-filter@v4
       with:
         list-files: shell
         filters: |
