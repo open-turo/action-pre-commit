@@ -20,7 +20,7 @@ runs:
       shell: bash
       run: |
         npm install --no-save --no-package-lock --no-audit --no-fund \
-          --prefix "$RUNNER_TEMP" "@commitlint/cli@^18"
+          --prefix "$RUNNER_TEMP" "@commitlint/cli@^20"
         echo "$RUNNER_TEMP/node_modules/.bin" >> $GITHUB_PATH
         echo "NODE_PATH=$RUNNER_TEMP/node_modules" >> $GITHUB_ENV
     - name: Use default conventional commit config
