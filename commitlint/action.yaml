@@ -38,7 +38,7 @@ runs:
         npm install --no-save --no-package-lock --no-audit --no-fund \
           --prefix "$RUNNER_TEMP" \
           "@open-turo/commitlint-config-conventional" \
-          "@commitlint/cli@^18"
+          "@commitlint/cli@^20"
     - name: Commitlint
       if: hashFiles(inputs.config-file) != ''
       shell: bash
