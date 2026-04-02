@@ -3,7 +3,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "managerFilePatterns": ["action\\.yaml$"],
+      "fileMatch": ["action\\.yaml$"],
       "matchStrings": [
         "node-version:\\s*[\"']?(?<currentValue>\\d+[\\d.]*)[\"']?",
         "echo \"version=(?<currentValue>\\d+)\" >> \\$GITHUB_OUTPUT"
@@ -13,7 +13,7 @@
     },
     {
       "customType": "regex",
-      "managerFilePatterns": ["action\\.yaml$"],
+      "fileMatch": ["action\\.yaml$"],
       "matchStrings": ["\"(?<depName>@?[^@\"]+)@(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "npm"
     }
