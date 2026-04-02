@@ -5,7 +5,7 @@
       "customType": "regex",
       "managerFilePatterns": ["action\\.yaml$"],
       "matchStrings": [
-        "# Default Node version is v(?<currentValue>\\d+)",
+        "node-version:\\s*[\"']?(?<currentValue>\\d+[\\d.]*)[\"']?",
         "echo \"version=(?<currentValue>\\d+)\" >> \\$GITHUB_OUTPUT"
       ],
       "depNameTemplate": "node",
@@ -14,7 +14,7 @@
     {
       "customType": "regex",
       "managerFilePatterns": ["action\\.yaml$"],
-      "matchStrings": ["\"(?<depName>@[^\"]+?)@(?<currentValue>[^\"]+)\""],
+      "matchStrings": ["\"(?<depName>@?[^@\"]+)@(?<currentValue>[^\"]+)\""],
       "datasourceTemplate": "npm"
     }
   ]
