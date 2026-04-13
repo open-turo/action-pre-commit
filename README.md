@@ -57,6 +57,7 @@ jobs:
 | parameter | description | required | default |
 | --- | --- | --- | --- |
 | config-file | The config file to present to commitlint-github-action | `true` | .commitlintrc.yaml |
+| disable-commitlint | Set this to "true" to disable commitlint entirely | `false` | false |
 | turo-conventional-commit | Set this to "false" to customize conventional commit configuration | `true` | true |
 | only-changed | Set this to "true" to only run pre-commit against changed files, and not the entire repository | `false` |  |
 | stage | Set this to run pre-commit against a specific stage of the pre-commit hooks. | `false` |  |
