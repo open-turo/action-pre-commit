@@ -128,8 +128,16 @@ runs:
     - name: Compute pre-commit cache key
       if: inputs.s3-bucket-name != ''
       id: pre_commit_cache_key
+      env:
+        RUNNER_TEMP: ${{ runner.temp }}
+        REPO_NAME: ${{ github.event.repository.name }}
       run: |
-        echo "key=${{ hashFiles('**/.pre-commit-config.yaml') }}" >> $GITHUB_OUTPUT
+        KEY="${{ hashFiles('**/.pre-commit-config.yaml') }}"
+        echo "key=$KEY" >> "$GITHUB_OUTPUT"
+        # Point pre-commit at the S3-backed cache dir. When this step is skipped
+        # (no S3 bucket), PRE_COMMIT_HOME stays unset and pre-commit uses its
+        # default (~/.cache/pre-commit), e.g. the runner image's pre-loaded cache.
+        echo "PRE_COMMIT_HOME=$RUNNER_TEMP/$REPO_NAME/cache-pre-commit-$KEY" >> "$GITHUB_ENV"
       shell: bash
     - name: Load cached pre-commit hooks if available
       if: inputs.s3-bucket-name != ''
@@ -152,9 +160,10 @@ runs:
       shell: bash
     - name: Pre-commit (from PATH)
       shell: bash
-      run: pre-commit run --show-diff-on-failure --color=always ${{ env.PRE_COMMIT_ARGS }}
-      env:
-        PRE_COMMIT_HOME: ${{ runner.temp }}/${{ github.event.repository.name }}/cache-pre-commit-${{ steps.pre_commit_cache_key.outputs.key }}
+      # PRE_COMMIT_HOME (set only when an S3 cache is configured) and
+      # PRE_COMMIT_ARGS are inherited from $GITHUB_ENV set in earlier steps.
+      # PRE_COMMIT_ARGS is intentionally unquoted to preserve multi-argument behavior.
+      run: pre-commit run --show-diff-on-failure --color=always $PRE_COMMIT_ARGS
 
     - name: Restore commitlint config
       if: always() && inputs.disable-commitlint != 'true' && hashFiles(inputs.config-file) != '' && inputs.turo-conventional-commit == 'true'
