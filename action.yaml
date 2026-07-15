@@ -103,7 +103,7 @@ runs:
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
       if: inputs.disable-commitlint != 'true'
-      uses: open-turo/action-pre-commit/commitlint@v3
+      uses: open-turo/action-pre-commit/commitlint@f/devex-907_make_setup-node_conditional_in_action-pre-commit_to_preserve_baked_pre-c
       with:
         restore-config: "false"
         config-file: ${{ inputs.config-file }}
