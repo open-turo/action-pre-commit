@@ -88,7 +88,7 @@ runs:
           echo "version=24" >> $GITHUB_OUTPUT
         fi
     - name: Setup node
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: ${{ steps.node-version.outputs.version }}
     - name: Commitlint
