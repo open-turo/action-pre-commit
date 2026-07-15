@@ -68,11 +68,19 @@ runs:
         # install python.
         PYTHON_BIN=$(command -v python || true)
         echo "PYTHON_BIN=$PYTHON_BIN" >> $GITHUB_ENV
+
+        # Finding node
+        # Skip setup-node when the runner image already has node, so
+        # pre-commit's baked hook environments (keyed on the system node
+        # path) are not invalidated by a different node landing on PATH.
+        NODE_BIN=$(command -v node || true)
+        echo "NODE_BIN=$NODE_BIN" >> $GITHUB_ENV
     - name: Setup python
       # Only run this if we don't already have a pre-commit on the PATH
       if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v6
     - name: Determine node version
+      if: env.NODE_BIN == ''
       id: node-version
       shell: bash
       run: |
@@ -88,6 +96,7 @@ runs:
           echo "version=24" >> $GITHUB_OUTPUT
         fi
     - name: Setup node
+      if: env.NODE_BIN == ''
       uses: actions/setup-node@v6
       with:
         node-version: ${{ steps.node-version.outputs.version }}
