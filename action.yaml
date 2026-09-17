@@ -63,14 +63,30 @@ runs:
         PRE_COMMIT_BIN=$(command -v pre-commit || true)
         echo "PRE_COMMIT_BIN=$PRE_COMMIT_BIN" >> $GITHUB_ENV
 
+        # A pre-commit older than 4.6.2 hits a known bug installing
+        # `language: node` hooks (e.g. mirrors-prettier) on npm 11.x/12.x
+        # runners (https://github.com/pre-commit/pre-commit/releases/tag/v4.6.2).
+        # Runner images can ship a stale pre-baked pre-commit on PATH, so check
+        # its version rather than just trusting that PATH has one at all.
+        PRE_COMMIT_MIN_VERSION="4.6.2"
+        PRE_COMMIT_NEEDS_UPGRADE="true"
+        if [[ -n "$PRE_COMMIT_BIN" ]]; then
+          PRE_COMMIT_CURRENT_VERSION=$("$PRE_COMMIT_BIN" --version | awk '{print $2}')
+          if printf '%s\n' "$PRE_COMMIT_MIN_VERSION" "$PRE_COMMIT_CURRENT_VERSION" | sort -V -C; then
+            PRE_COMMIT_NEEDS_UPGRADE="false"
+          fi
+        fi
+        echo "PRE_COMMIT_MIN_VERSION=$PRE_COMMIT_MIN_VERSION" >> $GITHUB_ENV
+        echo "PRE_COMMIT_NEEDS_UPGRADE=$PRE_COMMIT_NEEDS_UPGRADE" >> $GITHUB_ENV
+
         # Finding python
         # This will set an environment variable we can use to conditionally
         # install python.
         PYTHON_BIN=$(command -v python || true)
         echo "PYTHON_BIN=$PYTHON_BIN" >> $GITHUB_ENV
     - name: Setup python
-      # Only run this if we don't already have a pre-commit on the PATH
-      if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
+      # Only run this if we don't already have a good-enough pre-commit on the PATH
+      if: env.PYTHON_BIN == null && env.PRE_COMMIT_NEEDS_UPGRADE == 'true' && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v7
     - name: Determine node version
       id: node-version
@@ -153,9 +169,11 @@ runs:
         AWS_REGION: ${{ inputs.s3-bucket-region }}
         cache-name: ${{ github.event.repository.name }}/cache-pre-commit
     - name: Install Pre-commit
-      if: env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
+      # Installs/upgrades pre-commit when PATH has none, or has one older than
+      # PRE_COMMIT_MIN_VERSION (see the version check in "Version files").
+      if: env.PRE_COMMIT_NEEDS_UPGRADE == 'true' && steps.pre-commit-config.outputs.exists != 'false'
       run: |
-        pip install pre-commit
+        pip install --upgrade "pre-commit>=${PRE_COMMIT_MIN_VERSION}"
         pip freeze --local
       shell: bash
     - name: Pre-commit (from PATH)
