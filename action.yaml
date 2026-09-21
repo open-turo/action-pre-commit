@@ -65,36 +65,32 @@ runs:
 
         # pre-commit 4.6.1 rewrote `language: node` hook installation to run
         # `npm install --allow-git=root -g git+file://<hook checkout> <deps>`
-        # (it previously packed a tarball via `npm pack`). When a node hook also
-        # declares additional_dependencies -- mirrors-prettier ships
-        # prettier@x.y.z, mirrors-eslint ships eslint@x.y.z -- the git+file://
-        # package is no longer the sole root package, so npm refuses it:
+        # instead of packing a tarball. npm then refuses that git+file://
+        # package ("npm error code EALLOWGIT") for any node hook that also
+        # declares additional_dependencies, which covers mirrors-prettier and
+        # mirrors-eslint. Repos only notice once something invalidates their
+        # hook cache and forces a rebuild, which then fails lint and blocks
+        # release pipelines gated on it.
         #
-        #   npm error code EALLOWGIT
-        #   npm error Fetching non-root packages of type "git" have been disabled
-        #
-        # Any repo that has to rebuild its hook environments then fails lint,
-        # which also blocks release pipelines gated on it. Verified against a
-        # cold cache: 4.6.0 installs mirrors-prettier fine, 4.6.2 does not, with
-        # the same npm. Runner images can pre-bake an affected pre-commit on
-        # PATH, so check the version rather than only whether one exists.
-        #
-        # Revisit once upstream fixes the node installer; 4.6.1 is the first
-        # affected release. Tracking: pre-commit/pre-commit#3517 is the change
-        # that motivated the rewrite.
+        # Runner images can pre-bake an affected pre-commit, so check the
+        # version of whatever is on PATH rather than only whether one exists.
+        # Drop this pin once upstream ships a working node installer.
         PRE_COMMIT_BAD_FROM_VERSION="4.6.1"
         PRE_COMMIT_PIN="pre-commit<${PRE_COMMIT_BAD_FROM_VERSION}"
-        # Default true so a missing pre-commit also installs the pinned version.
+        # Default to installing our own, which is also the right answer when no
+        # pre-commit is present or its version cannot be determined.
         PRE_COMMIT_NEEDS_PIN="true"
         if [[ -n "$PRE_COMMIT_BIN" ]]; then
-          PRE_COMMIT_CURRENT_VERSION=$("$PRE_COMMIT_BIN" --version | awk '{print $2}')
-          # Sorted means current >= first affected version, so it needs pinning.
-          if printf '%s\n%s\n' "$PRE_COMMIT_BAD_FROM_VERSION" "$PRE_COMMIT_CURRENT_VERSION" | sort -V -C; then
-            PRE_COMMIT_NEEDS_PIN="true"
+          PRE_COMMIT_CURRENT_VERSION=$("$PRE_COMMIT_BIN" --version | awk '{print $2}') || PRE_COMMIT_CURRENT_VERSION=""
+          if [[ ! "$PRE_COMMIT_CURRENT_VERSION" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
+            echo "::warning::could not read a version from '$PRE_COMMIT_BIN --version'; installing $PRE_COMMIT_PIN"
+          # Already sorted means current >= the first affected version.
+          elif printf '%s\n%s\n' "$PRE_COMMIT_BAD_FROM_VERSION" "$PRE_COMMIT_CURRENT_VERSION" | sort -V -C; then
+            echo "pre-commit $PRE_COMMIT_CURRENT_VERSION at $PRE_COMMIT_BIN is affected; installing $PRE_COMMIT_PIN"
           else
             PRE_COMMIT_NEEDS_PIN="false"
+            echo "pre-commit $PRE_COMMIT_CURRENT_VERSION at $PRE_COMMIT_BIN predates the issue; using it as-is"
           fi
-          echo "found pre-commit $PRE_COMMIT_CURRENT_VERSION at $PRE_COMMIT_BIN (needs pin: $PRE_COMMIT_NEEDS_PIN)"
         fi
         echo "PRE_COMMIT_PIN=$PRE_COMMIT_PIN" >> $GITHUB_ENV
         echo "PRE_COMMIT_NEEDS_PIN=$PRE_COMMIT_NEEDS_PIN" >> $GITHUB_ENV
@@ -195,13 +191,13 @@ runs:
       env:
         RUNNER_TEMP: ${{ runner.temp }}
       run: |
-        # Install into a dedicated venv and put it first on PATH. Plain
+        # Install into a dedicated venv and put it first on PATH. A plain
         # `pip install` cannot be relied on to shadow a pre-commit pre-baked
-        # into the runner image (e.g. /usr/local/bin/pre-commit), which may sit
+        # into the runner image (e.g. /usr/local/bin/pre-commit), which can sit
         # outside pip's install prefix or need elevated permissions to replace.
+        python="$(command -v python3 || command -v python)"
         venv="$RUNNER_TEMP/action-pre-commit-venv"
-        python3 -m venv "$venv"
-        "$venv/bin/pip" install --quiet --upgrade pip
+        "$python" -m venv "$venv"
         "$venv/bin/pip" install --quiet "$PRE_COMMIT_PIN"
         echo "$venv/bin" >> "$GITHUB_PATH"
         echo "installed $("$venv/bin/pre-commit" --version) into $venv"
