@@ -63,46 +63,14 @@ runs:
         PRE_COMMIT_BIN=$(command -v pre-commit || true)
         echo "PRE_COMMIT_BIN=$PRE_COMMIT_BIN" >> $GITHUB_ENV
 
-        # pre-commit 4.6.1 rewrote `language: node` hook installation to run
-        # `npm install --allow-git=root -g git+file://<hook checkout> <deps>`
-        # instead of packing a tarball. npm then refuses that git+file://
-        # package ("npm error code EALLOWGIT") for any node hook that also
-        # declares additional_dependencies, which covers mirrors-prettier and
-        # mirrors-eslint. Repos only notice once something invalidates their
-        # hook cache and forces a rebuild, which then fails lint and blocks
-        # release pipelines gated on it.
-        #
-        # Runner images can pre-bake an affected pre-commit, so check the
-        # version of whatever is on PATH rather than only whether one exists.
-        # Drop this pin once upstream ships a working node installer.
-        PRE_COMMIT_BAD_FROM_VERSION="4.6.1"
-        PRE_COMMIT_PIN="pre-commit<${PRE_COMMIT_BAD_FROM_VERSION}"
-        # Default to installing our own, which is also the right answer when no
-        # pre-commit is present or its version cannot be determined.
-        PRE_COMMIT_NEEDS_PIN="true"
-        if [[ -n "$PRE_COMMIT_BIN" ]]; then
-          PRE_COMMIT_CURRENT_VERSION=$("$PRE_COMMIT_BIN" --version | awk '{print $2}') || PRE_COMMIT_CURRENT_VERSION=""
-          if [[ ! "$PRE_COMMIT_CURRENT_VERSION" =~ ^[0-9]+(\.[0-9]+)+$ ]]; then
-            echo "::warning::could not read a version from '$PRE_COMMIT_BIN --version'; installing $PRE_COMMIT_PIN"
-          # Already sorted means current >= the first affected version.
-          elif printf '%s\n%s\n' "$PRE_COMMIT_BAD_FROM_VERSION" "$PRE_COMMIT_CURRENT_VERSION" | sort -V -C; then
-            echo "pre-commit $PRE_COMMIT_CURRENT_VERSION at $PRE_COMMIT_BIN is affected; installing $PRE_COMMIT_PIN"
-          else
-            PRE_COMMIT_NEEDS_PIN="false"
-            echo "pre-commit $PRE_COMMIT_CURRENT_VERSION at $PRE_COMMIT_BIN predates the issue; using it as-is"
-          fi
-        fi
-        echo "PRE_COMMIT_PIN=$PRE_COMMIT_PIN" >> $GITHUB_ENV
-        echo "PRE_COMMIT_NEEDS_PIN=$PRE_COMMIT_NEEDS_PIN" >> $GITHUB_ENV
-
         # Finding python
         # This will set an environment variable we can use to conditionally
         # install python.
         PYTHON_BIN=$(command -v python || true)
         echo "PYTHON_BIN=$PYTHON_BIN" >> $GITHUB_ENV
     - name: Setup python
-      # Needed only when we have to install our own pinned pre-commit
-      if: env.PYTHON_BIN == null && env.PRE_COMMIT_NEEDS_PIN == 'true' && steps.pre-commit-config.outputs.exists != 'false'
+      # Only run this if we don't already have a pre-commit on the PATH
+      if: env.PYTHON_BIN == null && env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v7
     - name: Determine node version
       id: node-version
@@ -123,6 +91,49 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: ${{ steps.node-version.outputs.version }}
+    - name: Ensure a verified-safe npm outside $HOME
+      shell: bash
+      run: |
+        # npm 11.9.0-11.12.x has a bug (npm/cli#9189, fixed in 11.13.0 via
+        # npm/cli#9206/#9237): --allow-git=root incorrectly rejects
+        # legitimate root-level git installs, breaking every `language:
+        # node` pre-commit hook with additional_dependencies (mirrors-
+        # prettier, mirrors-eslint) with EALLOWGIT.
+        #
+        # pre-commit only reuses an already-installed node/npm when it
+        # resolves outside $HOME (pre_commit/lang_base.py::exe_exists). Our
+        # self-hosted runners install node under $HOME (RUNNER_TOOL_CACHE),
+        # so without this, pre-commit ignores the npm we just set up and
+        # downloads its own via nodeenv instead -- whose bundled npm can
+        # land in the same affected range.
+        #
+        # Pinned, not "latest": to bump, re-verify against the new version
+        # first (see PR description), the same way a hook rev bump gets
+        # verified. An open range would silently drift back into a broken
+        # npm the same way this bug shipped in the first place.
+        PRE_COMMIT_NPM_PIN="npm@12.0.2"
+
+        node_bin="$(command -v node || true)"
+        npm_bin="$(command -v npm || true)"
+        if [[ -z "$node_bin" || -z "$npm_bin" ]]; then
+          echo "node/npm not on PATH; leaving pre-commit to manage its own"
+          exit 0
+        fi
+
+        # Deliberately not named "shims": pre-commit rejects those paths.
+        dir="${RUNNER_TEMP:-/tmp}/action-pre-commit-node"
+        if [[ "$dir" == "$HOME"* ]]; then
+          dir=/tmp/action-pre-commit-node
+        fi
+        mkdir -p "$dir"
+        ln -sf "$node_bin" "$dir/node"
+        ln -sf "$npm_bin" "$dir/npm"
+        echo "$dir" >> "$GITHUB_PATH"
+        export PATH="$dir:$PATH"
+
+        npm install -g "$PRE_COMMIT_NPM_PIN"
+        hash -r
+        echo "npm pinned to $(npm --version) (was $("$npm_bin" --version))"
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
       if: inputs.disable-commitlint != 'true'
@@ -185,22 +196,10 @@ runs:
         AWS_REGION: ${{ inputs.s3-bucket-region }}
         cache-name: ${{ github.event.repository.name }}/cache-pre-commit
     - name: Install Pre-commit
-      # Runs when PATH has no pre-commit, or one affected by the node-hook
-      # install bug described in "Version files".
-      if: env.PRE_COMMIT_NEEDS_PIN == 'true' && steps.pre-commit-config.outputs.exists != 'false'
-      env:
-        RUNNER_TEMP: ${{ runner.temp }}
+      if: env.PRE_COMMIT_BIN == null && steps.pre-commit-config.outputs.exists != 'false'
       run: |
-        # Install into a dedicated venv and put it first on PATH. A plain
-        # `pip install` cannot be relied on to shadow a pre-commit pre-baked
-        # into the runner image (e.g. /usr/local/bin/pre-commit), which can sit
-        # outside pip's install prefix or need elevated permissions to replace.
-        python="$(command -v python3 || command -v python)"
-        venv="$RUNNER_TEMP/action-pre-commit-venv"
-        "$python" -m venv "$venv"
-        "$venv/bin/pip" install --quiet "$PRE_COMMIT_PIN"
-        echo "$venv/bin" >> "$GITHUB_PATH"
-        echo "installed $("$venv/bin/pre-commit" --version) into $venv"
+        pip install pre-commit
+        pip freeze --local
       shell: bash
     - name: Pre-commit (from PATH)
       shell: bash
