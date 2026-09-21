@@ -63,21 +63,41 @@ runs:
         PRE_COMMIT_BIN=$(command -v pre-commit || true)
         echo "PRE_COMMIT_BIN=$PRE_COMMIT_BIN" >> $GITHUB_ENV
 
-        # A pre-commit older than 4.6.2 hits a known bug installing
-        # `language: node` hooks (e.g. mirrors-prettier) on npm 11.x/12.x
-        # runners (https://github.com/pre-commit/pre-commit/releases/tag/v4.6.2).
-        # Runner images can ship a stale pre-baked pre-commit on PATH, so check
-        # its version rather than just trusting that PATH has one at all.
-        PRE_COMMIT_MIN_VERSION="4.6.2"
-        PRE_COMMIT_NEEDS_UPGRADE="true"
+        # pre-commit 4.6.1 rewrote `language: node` hook installation to run
+        # `npm install --allow-git=root -g git+file://<hook checkout> <deps>`
+        # (it previously packed a tarball via `npm pack`). When a node hook also
+        # declares additional_dependencies -- mirrors-prettier ships
+        # prettier@x.y.z, mirrors-eslint ships eslint@x.y.z -- the git+file://
+        # package is no longer the sole root package, so npm refuses it:
+        #
+        #   npm error code EALLOWGIT
+        #   npm error Fetching non-root packages of type "git" have been disabled
+        #
+        # Any repo that has to rebuild its hook environments then fails lint,
+        # which also blocks release pipelines gated on it. Verified against a
+        # cold cache: 4.6.0 installs mirrors-prettier fine, 4.6.2 does not, with
+        # the same npm. Runner images can pre-bake an affected pre-commit on
+        # PATH, so check the version rather than only whether one exists.
+        #
+        # Revisit once upstream fixes the node installer; 4.6.1 is the first
+        # affected release. Tracking: pre-commit/pre-commit#3517 is the change
+        # that motivated the rewrite.
+        PRE_COMMIT_BAD_FROM_VERSION="4.6.1"
+        PRE_COMMIT_PIN="pre-commit<${PRE_COMMIT_BAD_FROM_VERSION}"
+        # Default true so a missing pre-commit also installs the pinned version.
+        PRE_COMMIT_NEEDS_PIN="true"
         if [[ -n "$PRE_COMMIT_BIN" ]]; then
           PRE_COMMIT_CURRENT_VERSION=$("$PRE_COMMIT_BIN" --version | awk '{print $2}')
-          if printf '%s\n' "$PRE_COMMIT_MIN_VERSION" "$PRE_COMMIT_CURRENT_VERSION" | sort -V -C; then
-            PRE_COMMIT_NEEDS_UPGRADE="false"
+          # Sorted means current >= first affected version, so it needs pinning.
+          if printf '%s\n%s\n' "$PRE_COMMIT_BAD_FROM_VERSION" "$PRE_COMMIT_CURRENT_VERSION" | sort -V -C; then
+            PRE_COMMIT_NEEDS_PIN="true"
+          else
+            PRE_COMMIT_NEEDS_PIN="false"
           fi
+          echo "found pre-commit $PRE_COMMIT_CURRENT_VERSION at $PRE_COMMIT_BIN (needs pin: $PRE_COMMIT_NEEDS_PIN)"
         fi
-        echo "PRE_COMMIT_MIN_VERSION=$PRE_COMMIT_MIN_VERSION" >> $GITHUB_ENV
-        echo "PRE_COMMIT_NEEDS_UPGRADE=$PRE_COMMIT_NEEDS_UPGRADE" >> $GITHUB_ENV
+        echo "PRE_COMMIT_PIN=$PRE_COMMIT_PIN" >> $GITHUB_ENV
+        echo "PRE_COMMIT_NEEDS_PIN=$PRE_COMMIT_NEEDS_PIN" >> $GITHUB_ENV
 
         # Finding python
         # This will set an environment variable we can use to conditionally
@@ -85,8 +105,8 @@ runs:
         PYTHON_BIN=$(command -v python || true)
         echo "PYTHON_BIN=$PYTHON_BIN" >> $GITHUB_ENV
     - name: Setup python
-      # Only run this if we don't already have a good-enough pre-commit on the PATH
-      if: env.PYTHON_BIN == null && env.PRE_COMMIT_NEEDS_UPGRADE == 'true' && steps.pre-commit-config.outputs.exists != 'false'
+      # Needed only when we have to install our own pinned pre-commit
+      if: env.PYTHON_BIN == null && env.PRE_COMMIT_NEEDS_PIN == 'true' && steps.pre-commit-config.outputs.exists != 'false'
       uses: actions/setup-python@v7
     - name: Determine node version
       id: node-version
@@ -169,12 +189,22 @@ runs:
         AWS_REGION: ${{ inputs.s3-bucket-region }}
         cache-name: ${{ github.event.repository.name }}/cache-pre-commit
     - name: Install Pre-commit
-      # Installs/upgrades pre-commit when PATH has none, or has one older than
-      # PRE_COMMIT_MIN_VERSION (see the version check in "Version files").
-      if: env.PRE_COMMIT_NEEDS_UPGRADE == 'true' && steps.pre-commit-config.outputs.exists != 'false'
+      # Runs when PATH has no pre-commit, or one affected by the node-hook
+      # install bug described in "Version files".
+      if: env.PRE_COMMIT_NEEDS_PIN == 'true' && steps.pre-commit-config.outputs.exists != 'false'
+      env:
+        RUNNER_TEMP: ${{ runner.temp }}
       run: |
-        pip install --upgrade "pre-commit>=${PRE_COMMIT_MIN_VERSION}"
-        pip freeze --local
+        # Install into a dedicated venv and put it first on PATH. Plain
+        # `pip install` cannot be relied on to shadow a pre-commit pre-baked
+        # into the runner image (e.g. /usr/local/bin/pre-commit), which may sit
+        # outside pip's install prefix or need elevated permissions to replace.
+        venv="$RUNNER_TEMP/action-pre-commit-venv"
+        python3 -m venv "$venv"
+        "$venv/bin/pip" install --quiet --upgrade pip
+        "$venv/bin/pip" install --quiet "$PRE_COMMIT_PIN"
+        echo "$venv/bin" >> "$GITHUB_PATH"
+        echo "installed $("$venv/bin/pre-commit" --version) into $venv"
       shell: bash
     - name: Pre-commit (from PATH)
       shell: bash
