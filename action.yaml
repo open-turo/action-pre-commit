@@ -91,6 +91,62 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: ${{ steps.node-version.outputs.version }}
+    - name: Ensure a verified-safe npm outside $HOME
+      shell: bash
+      run: |
+        # npm 11.9.0-11.12.x has a bug (npm/cli#9189, fixed in 11.13.0 via
+        # npm/cli#9206/#9237): --allow-git=root incorrectly rejects
+        # legitimate root-level git installs, breaking every `language:
+        # node` pre-commit hook with additional_dependencies (mirrors-
+        # prettier, mirrors-eslint) with EALLOWGIT.
+        #
+        # pre-commit only reuses an already-installed node/npm when it
+        # resolves outside $HOME (pre_commit/lang_base.py::exe_exists). Our
+        # self-hosted runners install node under $HOME (RUNNER_TOOL_CACHE),
+        # so without this, pre-commit ignores the npm we just set up and
+        # downloads its own via nodeenv instead -- whose bundled npm can
+        # land in the same affected range.
+        #
+        # That exe_exists gate only decides whether pre-commit enters
+        # "system" mode at all. Once it does, nodeenv's own shim search
+        # (nodeenv.py::create_environment) does a SEPARATE, $HOME-blind
+        # lookup that checks the literal name "nodejs" before "node". Our
+        # self-hosted runner image bakes in /usr/bin/nodejs (apt-installed,
+        # unrelated to anything actions/setup-node provisions), so without
+        # a "nodejs" entry here too, that lookup walks past this directory
+        # (no "nodejs" file in it) and silently lands on /usr/bin/nodejs --
+        # completely bypassing the npm pin below. Verified empirically:
+        # without this symlink, node_env-system resolved to the image's
+        # v22.23.2 instead of the v24.15.0 set up above.
+        #
+        # Pinned, not "latest": to bump, re-verify against the new version
+        # first (see PR description), the same way a hook rev bump gets
+        # verified. An open range would silently drift back into a broken
+        # npm the same way this bug shipped in the first place.
+        PRE_COMMIT_NPM_PIN="npm@12.0.2"
+
+        node_bin="$(command -v node || true)"
+        npm_bin="$(command -v npm || true)"
+        if [[ -z "$node_bin" || -z "$npm_bin" ]]; then
+          echo "node/npm not on PATH; leaving pre-commit to manage its own"
+          exit 0
+        fi
+
+        # Deliberately not named "shims": pre-commit rejects those paths.
+        dir="${RUNNER_TEMP:-/tmp}/action-pre-commit-node"
+        if [[ "$dir" == "$HOME"* ]]; then
+          dir=/tmp/action-pre-commit-node
+        fi
+        mkdir -p "$dir"
+        ln -sf "$node_bin" "$dir/node"
+        ln -sf "$node_bin" "$dir/nodejs"
+        ln -sf "$npm_bin" "$dir/npm"
+        echo "$dir" >> "$GITHUB_PATH"
+        export PATH="$dir:$PATH"
+
+        npm install -g "$PRE_COMMIT_NPM_PIN"
+        hash -r
+        echo "npm pinned to $(npm --version) (was $("$npm_bin" --version))"
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
       if: inputs.disable-commitlint != 'true'
