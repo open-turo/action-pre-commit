@@ -91,6 +91,39 @@ runs:
       uses: actions/setup-node@v7
       with:
         node-version: ${{ steps.node-version.outputs.version }}
+    - name: Ensure a verified-safe npm outside $HOME
+      shell: bash
+      run: |
+        # npm 11.9.0-11.12.x rejects pre-commit's node-hook installs with
+        # EALLOWGIT (npm/cli#9189, fixed in 11.13.0). Pin a known-good npm.
+        # Pinned, not "latest": re-verify before bumping.
+        PRE_COMMIT_NPM_PIN="npm@12.0.2"
+
+        node_bin="$(command -v node || true)"
+        npm_bin="$(command -v npm || true)"
+        if [[ -z "$node_bin" || -z "$npm_bin" ]]; then
+          echo "node/npm not on PATH; leaving pre-commit to manage its own"
+          exit 0
+        fi
+
+        # pre-commit only reuses node/npm found outside $HOME, so expose them
+        # from a temp dir (setup-node installs under $HOME). "nodejs" is
+        # linked too, otherwise the image's /usr/bin/nodejs gets picked.
+        # Not named "shims": pre-commit rejects those paths.
+        dir="${RUNNER_TEMP:-/tmp}/action-pre-commit-node"
+        if [[ "$dir" == "$HOME"* ]]; then
+          dir=/tmp/action-pre-commit-node
+        fi
+        mkdir -p "$dir"
+        ln -sf "$node_bin" "$dir/node"
+        ln -sf "$node_bin" "$dir/nodejs"
+        ln -sf "$npm_bin" "$dir/npm"
+        echo "$dir" >> "$GITHUB_PATH"
+        export PATH="$dir:$PATH"
+
+        npm install -g "$PRE_COMMIT_NPM_PIN"
+        hash -r
+        echo "npm pinned to $(npm --version) (was $("$npm_bin" --version))"
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
       if: inputs.disable-commitlint != 'true'
