@@ -95,9 +95,9 @@ runs:
       shell: bash
       run: |
         # npm 11.9.0-11.12.x rejects pre-commit's node-hook installs with
-        # EALLOWGIT (npm/cli#9189, fixed in 11.13.0). Pin a known-good npm.
-        # Pinned, not "latest": re-verify before bumping.
-        PRE_COMMIT_NPM_PIN="npm@12.0.2"
+        # EALLOWGIT (npm/cli#9189, fixed in 11.13.0). Only npm in that range is
+        # upgraded, to the oldest fixed release so older Node versions still work.
+        PRE_COMMIT_NPM_FIX="npm@11.13.0"
 
         node_bin="$(command -v node || true)"
         npm_bin="$(command -v npm || true)"
@@ -121,9 +121,17 @@ runs:
         echo "$dir" >> "$GITHUB_PATH"
         export PATH="$dir:$PATH"
 
-        npm install -g "$PRE_COMMIT_NPM_PIN"
-        hash -r
-        echo "npm pinned to $(npm --version) (was $("$npm_bin" --version))"
+        current="$(npm --version)"
+        if ! node -e 'const [a, b] = process.argv[1].split(".").map(Number); process.exit(a === 11 && b >= 9 && b <= 12 ? 0 : 1)' "$current"; then
+          echo "npm $current is not affected; leaving it as is"
+          exit 0
+        fi
+        if npm install -g "$PRE_COMMIT_NPM_FIX"; then
+          hash -r
+          echo "npm upgraded from $current to $(npm --version)"
+        else
+          echo "::warning::could not upgrade npm $current to $PRE_COMMIT_NPM_FIX; node hooks may fail with EALLOWGIT"
+        fi
     - name: Commitlint
       # This version needs to be sync'd with the repo HEAD if a major version is cut
       if: inputs.disable-commitlint != 'true'
