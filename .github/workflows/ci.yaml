@@ -73,9 +73,10 @@ jobs:
   #   node-file: which version file to write (none, node-version, nvmrc, both)
   #   expect-npm: npm after the action ("" only checks it is out of the range)
   #   globalconfig: set NPM_CONFIG_GLOBALCONFIG to the workspace .npmrc
+  #   runner: defaults to ubuntu-latest; most consumers run on arm64
   test-npm:
     name: Test / npm ${{ matrix.name }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
@@ -130,6 +131,23 @@ jobs:
             node-version: ""
             globalconfig: false
             expect-npm: ""
+          - name: no version file (default Node) with GLOBALCONFIG
+            node-file: none
+            node-version: ""
+            globalconfig: true
+            expect-npm: ""
+          - name: 11.11.0 (in range) on arm64
+            runner: ubuntu-24.04-arm
+            node-file: node-version
+            node-version: "24.14.1"
+            globalconfig: false
+            expect-npm: "11.13.0"
+          - name: 11.11.0 (in range) with GLOBALCONFIG on arm64
+            runner: ubuntu-24.04-arm
+            node-file: node-version
+            node-version: "24.14.1"
+            globalconfig: true
+            expect-npm: "11.13.0"
           - name: .nvmrc only, 11.11.0
             node-file: nvmrc
             node-version: "24.14.1"
