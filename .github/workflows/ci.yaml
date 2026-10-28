@@ -65,6 +65,139 @@ jobs:
       - name: Commitlint
         uses: ./commitlint
 
+  # test-npm covers the "Ensure a verified-safe npm" step against inputs that
+  # consumer repos control: the Node version file and npm env vars. The npm
+  # that setup-node installs is the one bundled with the Node release
+  # (nodejs.org/dist/index.json), so each row picks a Node version to get a
+  # specific npm. The EALLOWGIT range is npm 11.9.0 to 11.12.x.
+  #   node-file: which version file to write (none, node-version, nvmrc, both)
+  #   expect-npm: npm after the action ("" only checks it is out of the range)
+  #   globalconfig: set NPM_CONFIG_GLOBALCONFIG to the workspace .npmrc
+  test-npm:
+    name: Test / npm ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: 11.8.0 (below range)
+            node-file: node-version
+            node-version: "24.13.1"
+            globalconfig: false
+            expect-npm: "11.8.0"
+          - name: 11.9.0 (range start)
+            node-file: node-version
+            node-version: "24.14.0"
+            globalconfig: false
+            expect-npm: "11.13.0"
+          - name: 11.9.0 (range start) with GLOBALCONFIG
+            node-file: node-version
+            node-version: "24.14.0"
+            globalconfig: true
+            expect-npm: "11.13.0"
+          - name: 11.11.0 (in range)
+            node-file: node-version
+            node-version: "24.14.1"
+            globalconfig: false
+            expect-npm: "11.13.0"
+          - name: 11.11.0 (in range) with GLOBALCONFIG
+            node-file: node-version
+            node-version: "24.14.1"
+            globalconfig: true
+            expect-npm: "11.13.0"
+          - name: 11.12.1 (range end) with GLOBALCONFIG
+            node-file: node-version
+            node-version: "24.15.0"
+            globalconfig: true
+            expect-npm: "11.13.0"
+          - name: 11.13.0 (first fixed) with GLOBALCONFIG
+            node-file: node-version
+            node-version: "24.16.0"
+            globalconfig: true
+            expect-npm: "11.13.0"
+          - name: 11.19.1 (current)
+            node-file: node-version
+            node-version: "24.22.1"
+            globalconfig: false
+            expect-npm: "11.19.1"
+          - name: 10.9.2 (old Node 22) with GLOBALCONFIG
+            node-file: node-version
+            node-version: "22.13.0"
+            globalconfig: true
+            expect-npm: "10.9.2"
+          - name: no version file (default Node)
+            node-file: none
+            node-version: ""
+            globalconfig: false
+            expect-npm: ""
+          - name: .nvmrc only, 11.11.0
+            node-file: nvmrc
+            node-version: "24.14.1"
+            globalconfig: false
+            expect-npm: "11.13.0"
+          - name: .node-version wins over .nvmrc
+            node-file: both
+            node-version: "24.22.1"
+            nvmrc-version: "24.14.1"
+            globalconfig: false
+            expect-npm: "11.19.1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Write Node version files
+        env:
+          NODE_FILE: ${{ matrix.node-file }}
+          NODE_VERSION: ${{ matrix.node-version }}
+          NVMRC_VERSION: ${{ matrix.nvmrc-version }}
+        run: |
+          case "$NODE_FILE" in
+            node-version) echo "$NODE_VERSION" > .node-version ;;
+            nvmrc) echo "$NODE_VERSION" > .nvmrc ;;
+            both)
+              echo "$NODE_VERSION" > .node-version
+              echo "$NVMRC_VERSION" > .nvmrc
+              ;;
+          esac
+      - name: Use the workspace .npmrc as global config
+        if: matrix.globalconfig
+        run: |
+          # Same setup as consumer repos: a project root whose .npmrc is also
+          # the global config.
+          echo '{"name":"fixture","private":true}' > package.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+          echo "NPM_CONFIG_GLOBALCONFIG=${GITHUB_WORKSPACE}/.npmrc" >> "$GITHUB_ENV"
+      - name: Pre-commit
+        uses: ./
+      - name: Check npm after the action
+        env:
+          EXPECT_NODE: ${{ matrix.node-version }}
+          EXPECT_NPM: ${{ matrix.expect-npm }}
+        run: |
+          echo "node $(node --version), npm $(npm --version)"
+          if [[ -n "$EXPECT_NODE" && "$(node --version)" != "v$EXPECT_NODE" ]]; then
+            echo "::error::expected node v$EXPECT_NODE"
+            exit 1
+          fi
+          if [[ -n "$EXPECT_NPM" && "$(npm --version)" != "$EXPECT_NPM" ]]; then
+            echo "::error::expected npm $EXPECT_NPM"
+            exit 1
+          fi
+          node -e 'const [a, b] = process.argv[1].split(".").map(Number); process.exit(a === 11 && b >= 9 && b <= 12 ? 1 : 0)' "$(npm --version)" \
+            || { echo "::error::npm is still in the EALLOWGIT range"; exit 1; }
+      - name: Install a git package like pre-commit does
+        run: |
+          fixture="${RUNNER_TEMP}/fixture"
+          mkdir -p "$fixture"
+          cd "$fixture"
+          git init -q
+          echo '{"name":"fixture","version":"1.0.0"}' > package.json
+          git add package.json
+          git -c user.email=ci@example.com -c user.name=ci commit -qm init
+          npm install --allow-git=root --install-links -g "git+file://${fixture}" \
+            --prefix "${RUNNER_TEMP}/prefix"
+
   # test-oss tries to run pre-commit against open source repositories not in
   # open-turo to make sure this is usable outside the org.
   # Repositories added to this list should have pre-commit hooks that don't
