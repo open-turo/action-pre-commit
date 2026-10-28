@@ -121,6 +121,11 @@ runs:
         echo "$dir" >> "$GITHUB_PATH"
         export PATH="$dir:$PATH"
 
+        # Run npm away from the repo: with NPM_CONFIG_GLOBALCONFIG pointing at
+        # the workspace .npmrc, npm in the repo root loads it as both project
+        # and global config and exits with "double-loading config".
+        cd "$dir"
+
         current="$(npm --version)"
         if ! node -e 'const [a, b] = process.argv[1].split(".").map(Number); process.exit(a === 11 && b >= 9 && b <= 12 ? 0 : 1)' "$current"; then
           echo "npm $current is not affected; leaving it as is"
