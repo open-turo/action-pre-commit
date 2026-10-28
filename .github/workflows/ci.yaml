@@ -170,6 +170,10 @@ jobs:
           echo "NPM_CONFIG_GLOBALCONFIG=${GITHUB_WORKSPACE}/.npmrc" >> "$GITHUB_ENV"
       - name: Pre-commit
         uses: ./
+        env:
+          # This repo's own hook runs npx in the repo root, which fails with the
+          # GLOBALCONFIG fixture above and is unrelated to the npm step.
+          SKIP: update-action-readme
       - name: Check npm after the action
         env:
           EXPECT_NODE: ${{ matrix.node-version }}
