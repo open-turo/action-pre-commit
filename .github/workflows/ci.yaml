@@ -175,6 +175,9 @@ jobs:
           # GLOBALCONFIG fixture above and is unrelated to the npm step.
           SKIP: update-action-readme
       - name: Check npm after the action
+        # Not in the repo root: with the GLOBALCONFIG fixture npm would exit
+        # with "double-loading config" there.
+        working-directory: ${{ runner.temp }}
         env:
           EXPECT_NODE: ${{ matrix.node-version }}
           EXPECT_NPM: ${{ matrix.expect-npm }}
