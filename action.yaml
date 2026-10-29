@@ -85,7 +85,7 @@ runs:
           echo "version=$NODE_VERSION" >> $GITHUB_OUTPUT
         else
           # Default Node version is v24
-          echo "version=24" >> $GITHUB_OUTPUT
+          echo "version=26" >> $GITHUB_OUTPUT
         fi
     - name: Setup node
       uses: actions/setup-node@v7
