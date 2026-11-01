@@ -97,7 +97,7 @@ runs:
         # npm 11.9.0-11.12.x rejects pre-commit's node-hook installs with
         # EALLOWGIT (npm/cli#9189, fixed in 11.13.0). Only npm in that range is
         # upgraded, to the oldest fixed release so older Node versions still work.
-        PRE_COMMIT_NPM_FIX="npm@11.13.0"
+        PRE_COMMIT_NPM_FIX="npm@11.21.1"
 
         node_bin="$(command -v node || true)"
         npm_bin="$(command -v npm || true)"
